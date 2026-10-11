@@ -91,6 +91,29 @@
     </section>
   </main>
 
+  <!-- Desmarcar: escolhe o motivo e monta a mensagem de WhatsApp para a cliente -->
+  <dialog class="janela" id="janelaDesmarcar" aria-labelledby="tituloDesmarcar">
+    <form method="dialog" id="formDesmarcar">
+      <h2 id="tituloDesmarcar">Desmarcar horário</h2>
+      <p class="sub" id="quemDesmarcar"></p>
+      <fieldset class="motivos">
+        <legend>Motivo</legend>
+        <label class="check"><input type="radio" name="motivo" value="Imprevisto" checked> Imprevisto</label>
+        <label class="check"><input type="radio" name="motivo" value="Horário indisponível"> Horário indisponível</label>
+        <label class="check"><input type="radio" name="motivo" value="Incompatibilidade de horário"> Incompatibilidade de horário</label>
+      </fieldset>
+      <label>Mensagem para a cliente <small>(pode editar antes de enviar)</small>
+        <textarea name="mensagem" rows="7"></textarea>
+      </label>
+      <p class="erro" role="alert"></p>
+      <div class="acoes-janela">
+        <button type="submit" class="btn btn-escuro" value="desmarcar" id="btnDesmarcar">Desmarcar horário</button>
+        <a class="btn btn-escuro" id="btnAvisarDesmarque" target="_blank" rel="noopener" hidden>Avisar cliente do desmarque</a>
+        <button type="submit" class="link" value="fechar" formnovalidate id="btnFecharDesmarcar">Voltar</button>
+      </div>
+    </form>
+  </dialog>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="config.js"></script>

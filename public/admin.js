@@ -53,9 +53,16 @@
   const msgLembrete = (a) =>
     `Oi, ${primeiro(a.nome)}! Aqui é o Léo. Amanhã você tem um horário comigo: ${quando(a)} (${a.servicos.join(" + ")}). Podemos confirmar? ` +
     `Se preferir, confirme por aqui: ${dados.siteUrl}/confirmar?id=${a.id}&t=${a.token}`;
+  // Mensagem do desmarque, de acordo com o motivo escolhido pelo Léo.
+  const MOTIVOS = {
+    "Imprevisto": (a) => `Infelizmente surgiu um imprevisto e vou precisar desmarcar o seu horário de ${quando(a)}.`,
+    "Horário indisponível": (a) => `Infelizmente o horário que você marcou, ${quando(a)}, ficou indisponível e precisei cancelá-lo.`,
+    "Incompatibilidade de horário": (a) => `Infelizmente tive uma incompatibilidade na agenda e não vou conseguir te atender ${quando(a)}, por isso precisei cancelar o seu horário.`,
+  };
   const msgDesmarcado = (a, motivo) =>
-    `Oi, ${primeiro(a.nome)}! Aqui é o Léo. Infelizmente não vou conseguir te atender ${quando(a)}${motivo ? ` (${motivo})` : ""}. ` +
-    `Me desculpe! Você pode escolher outro horário em ${dados.siteUrl}/#agendar`;
+    `Olá, ${primeiro(a.nome)}, tudo bem? Aqui é o Léo, do L.S Cabeleireiro. ` +
+    `${(MOTIVOS[motivo] || MOTIVOS["Imprevisto"])(a)} Me desculpe pelo transtorno!\n\n` +
+    `Você deseja reagendar agora? É só me responder por aqui ou escolher um novo horário em ${dados.siteUrl}/#agendar`;
 
   /* ------------------------------------------------------------ agenda */
   async function carregarAgenda() {
@@ -111,6 +118,9 @@
         ${a.obs ? `<small class="obs">“${esc(a.obs)}”</small>` : ""}
         ${a.status === "cancelado" && a.motivo_cancelado ? `<small class="motivo">${esc(a.motivo_cancelado)}</small>` : ""}
         <div class="selos">${selos}</div>
+        ${!ativo ? `<div class="acoes-horario">
+          <a class="btn btn-linha btn-sm" target="_blank" rel="noopener" href="${wa(a.whatsapp, msgDesmarcado(a, a.motivo_cancelado))}">Avisar cliente do desmarque</a>
+        </div>` : ""}
         ${ativo ? `<div class="acoes-horario">
           ${a.status === "pendente" ? `<button type="button" class="btn btn-escuro btn-sm" data-acao="confirmar">✓ Confirmar horário</button>` : ""}
           ${eAmanha(a) ? `<a class="btn btn-linha btn-sm" target="_blank" rel="noopener" href="${wa(a.whatsapp, msgLembrete(a))}">WhatsApp: lembrete</a>`
@@ -138,19 +148,53 @@
         else if (confirm(`Horário confirmado. O e-mail automático não está ativo: avisar ${primeiro(a.nome)} pelo WhatsApp agora?`)) open(wa(a.whatsapp, msgConfirmado(a)), "_blank");
       } catch (err) { toast(err.message); b.disabled = false; }
     }
-    if (b.dataset.acao === "desmarcar") {
-      const motivo = prompt(`Desmarcar o horário de ${a.nome} (${quando(a)})?\n\nSe quiser, escreva um recado para ela (opcional):`, "");
-      if (motivo === null) return;
-      b.disabled = true;
-      try {
-        const r = await API.post(`/api/admin/agendamentos/${id}/desmarcar`, { motivo });
-        Object.assign(a, r.agendamento);
-        renderAgenda();
-        if (r.emailEnviado) toast(`${primeiro(a.nome)} foi avisada por e-mail.`);
-        else if (confirm(`Horário desmarcado. Avisar ${primeiro(a.nome)} pelo WhatsApp agora?`)) open(wa(a.whatsapp, msgDesmarcado(a, motivo)), "_blank");
-      } catch (err) { toast(err.message); b.disabled = false; }
-    }
+    if (b.dataset.acao === "desmarcar") abrirDesmarcar(a);
   });
+
+  /* ------------------------------------------------------------ desmarcar */
+  const jd = $("#janelaDesmarcar"), fd = $("#formDesmarcar");
+  let emDesmarque = null;
+
+  const motivoEscolhido = () => fd.elements.motivo.value;
+  function abrirDesmarcar(a) {
+    emDesmarque = a;
+    fd.reset();
+    $(".erro", fd).textContent = "";
+    $("#quemDesmarcar").textContent = `${a.nome} · ${quando(a)}`;
+    fd.elements.mensagem.value = msgDesmarcado(a, motivoEscolhido());
+    $("#btnDesmarcar").hidden = false; $("#btnDesmarcar").disabled = false;
+    $("#btnAvisarDesmarque").hidden = true;
+    $("#btnFecharDesmarcar").textContent = "Voltar";
+    fd.querySelectorAll("input[name=motivo]").forEach((r) => { r.disabled = false; });
+    jd.showModal();
+  }
+  // Trocar o motivo refaz a mensagem.
+  fd.addEventListener("change", (e) => {
+    if (e.target.name === "motivo") fd.elements.mensagem.value = msgDesmarcado(emDesmarque, motivoEscolhido());
+  });
+  fd.elements.mensagem.addEventListener("input", () => {
+    $("#btnAvisarDesmarque").href = wa(emDesmarque.whatsapp, fd.elements.mensagem.value);
+  });
+  fd.addEventListener("submit", async (e) => {
+    if (e.submitter?.value !== "desmarcar") return; // "Voltar" só fecha
+    e.preventDefault();
+    const a = emDesmarque, btn = $("#btnDesmarcar");
+    btn.disabled = true;
+    try {
+      const r = await API.post(`/api/admin/agendamentos/${a.id}/desmarcar`, { motivo: motivoEscolhido() });
+      Object.assign(a, r.agendamento);
+      renderAgenda();
+      // Depois de desmarcar, o botão vira "Avisar cliente do desmarque" (link direto, sem bloqueio de pop-up).
+      btn.hidden = true;
+      fd.querySelectorAll("input[name=motivo]").forEach((x) => { x.disabled = true; });
+      const avisar = $("#btnAvisarDesmarque");
+      avisar.href = wa(a.whatsapp, fd.elements.mensagem.value);
+      avisar.hidden = false;
+      $("#btnFecharDesmarcar").textContent = "Fechar";
+      toast(r.emailEnviado ? `Desmarcado. ${primeiro(a.nome)} também foi avisada por e-mail.` : "Horário desmarcado.");
+    } catch (err) { $(".erro", fd).textContent = err.message; btn.disabled = false; }
+  });
+  $("#btnAvisarDesmarque").addEventListener("click", () => setTimeout(() => jd.close(), 300));
 
   /* ------------------------------------------------------------ bloqueios */
   const fb = $("#formBloqueio");

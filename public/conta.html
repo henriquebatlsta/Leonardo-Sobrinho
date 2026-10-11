@@ -37,7 +37,10 @@
       </div>
       <form id="formEntrar" novalidate>
         <label data-so="cadastro" hidden>Nome completo <input name="nome" autocomplete="name"></label>
-        <label data-so="cadastro" hidden>WhatsApp <input name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999"></label>
+        <label data-so="cadastro" hidden>WhatsApp
+          <input name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" placeholder="(11) 99999-9999">
+          <small class="dica-campo">Obrigatório ser um número com WhatsApp: é por lá que o Léo fala com você sobre o seu horário.</small>
+        </label>
         <label>E-mail <input name="email" type="email" autocomplete="email" placeholder="voce@email.com"></label>
         <label>Senha <small data-so="cadastro" hidden>(mínimo 6 caracteres)</small>
           <input name="senha" type="password" autocomplete="current-password">
@@ -93,7 +96,9 @@
         <h2>Meus dados</h2>
         <div class="grade-campos">
           <label class="col-2">Nome completo <input name="nome" autocomplete="name" required></label>
-          <label>WhatsApp <input name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" required></label>
+          <label>WhatsApp <input name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" required>
+            <small class="dica-campo">Obrigatório ser um número com WhatsApp: é por lá que o Léo fala com você sobre o seu horário.</small>
+          </label>
           <label>E-mail <input name="email" type="email" disabled></label>
         </div>
         <h3>Endereço <small>(para entregas da loja, quando ela abrir)</small></h3>
