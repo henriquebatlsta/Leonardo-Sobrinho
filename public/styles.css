@@ -322,7 +322,7 @@ textarea { resize: vertical; }
   display: grid; grid-template-columns: .9fr 1.1fr; gap: clamp(2rem, 5vw, 4rem); align-items: center;
   padding: 5rem var(--gutter); max-width: 1180px; margin: 0 auto;
 }
-.sobre-foto img { width: 100%; height: auto; border-radius: 999px 999px var(--raio) var(--raio); aspect-ratio: 5 / 8; object-fit: cover; box-shadow: var(--sombra); border: 10px solid var(--creme-claro); }
+.sobre-foto img { width: 100%; height: auto; border-radius: 999px 999px var(--raio) var(--raio); aspect-ratio: 11 / 16; object-fit: cover; box-shadow: var(--sombra); border: 10px solid var(--creme-claro); }
 .sobre h2 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 500; text-transform: uppercase; }
 .sobre-texto > p:not(.sobretitulo):not(.manuscrito) { color: var(--texto-suave); margin: 1.2rem 0 1.6rem; }
 .redes { display: flex; flex-wrap: wrap; gap: .6rem; }
