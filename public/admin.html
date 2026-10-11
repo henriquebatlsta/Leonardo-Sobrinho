@@ -83,7 +83,10 @@
       <!-- CLIENTES -->
       <div data-painel="clientes" hidden>
         <div class="cartao-conta">
-          <h2>Clientes cadastradas <small id="totalClientes"></small></h2>
+          <div class="cab-clientes">
+            <h2>Clientes cadastradas <small id="totalClientes"></small></h2>
+            <button type="button" class="btn btn-escuro btn-sm" id="btnNovaCliente">+ Cadastrar cliente</button>
+          </div>
           <input type="search" id="buscaCliente" placeholder="Buscar por nome, e-mail ou WhatsApp" aria-label="Buscar cliente">
           <div id="listaClientes"></div>
         </div>
@@ -110,6 +113,46 @@
         <button type="submit" class="btn btn-escuro" value="desmarcar" id="btnDesmarcar">Desmarcar horário</button>
         <a class="btn btn-escuro" id="btnAvisarDesmarque" target="_blank" rel="noopener" hidden>Avisar cliente do desmarque</a>
         <button type="submit" class="link" value="fechar" formnovalidate id="btnFecharDesmarcar">Voltar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Cadastro feito pelo Léo: cria a conta e manda o acesso pelo WhatsApp -->
+  <dialog class="janela" id="janelaCliente" aria-labelledby="tituloCliente">
+    <form method="dialog" id="formCliente" novalidate>
+      <h2 id="tituloCliente">Cadastrar cliente</h2>
+      <p class="sub" id="subCliente">A cliente recebe um acesso para entrar no site e agendar. Ela pode trocar a senha depois em “Minha conta”.</p>
+      <div class="campos-cliente">
+        <label>Nome completo <input name="nome" autocomplete="off" required></label>
+        <label>WhatsApp <input name="whatsapp" type="tel" inputmode="tel" placeholder="(11) 99999-9999" required></label>
+        <label>E-mail <small>(é o login dela)</small><input name="email" type="email" autocomplete="off" required></label>
+        <label>Senha de acesso <small>(pode trocar)</small>
+          <span class="linha-senha"><input name="senha" autocomplete="off" required minlength="6"><button type="button" class="link" id="btnOutraSenha">Gerar outra</button></span>
+        </label>
+      </div>
+      <label class="msg-cliente" hidden>Mensagem para a cliente <small>(pode editar antes de enviar)</small>
+        <textarea name="mensagem" rows="8"></textarea>
+      </label>
+      <p class="erro" role="alert"></p>
+      <div class="acoes-janela">
+        <button type="submit" class="btn btn-escuro" value="salvar" id="btnSalvarCliente">Cadastrar</button>
+        <a class="btn btn-escuro" id="btnEnviarAcesso" target="_blank" rel="noopener" hidden>Enviar acesso no WhatsApp</a>
+        <button type="submit" class="link" value="fechar" formnovalidate id="btnFecharCliente">Voltar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Aviso depois de desfazer um desmarque -->
+  <dialog class="janela" id="janelaAviso" aria-labelledby="tituloAviso">
+    <form method="dialog">
+      <h2 id="tituloAviso">Horário remarcado</h2>
+      <p class="sub" id="subAviso"></p>
+      <label>Mensagem para a cliente <small>(pode editar antes de enviar)</small>
+        <textarea name="mensagem" rows="6"></textarea>
+      </label>
+      <div class="acoes-janela">
+        <a class="btn btn-escuro" id="btnEnviarAviso" target="_blank" rel="noopener">Enviar confirmação no WhatsApp</a>
+        <button type="submit" class="link" value="fechar">Fechar</button>
       </div>
     </form>
   </dialog>

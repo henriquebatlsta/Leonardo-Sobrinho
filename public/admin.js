@@ -48,6 +48,13 @@
   const primeiro = (nome) => nome.trim().split(/\s+/)[0];
   const wa = (num, msg) => `https://wa.me/55${String(num).replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "")}?text=${encodeURIComponent(msg)}`;
   const quando = (a) => `${API.fmtData(a.data)} às ${a.hora}`;
+  const msgRemarcado = (a) =>
+    `Olá, ${primeiro(a.nome)}, tudo bem? Aqui é o Léo, do L.S Cabeleireiro. Boa notícia: consegui manter o seu horário! ` +
+    `Ele está confirmado: ${quando(a)} (${a.servicos.join(" + ")}). Te espero!`;
+  const msgAcesso = (c, senha) =>
+    `Olá, ${primeiro(c.nome)}, tudo bem? Aqui é o Léo, do L.S Cabeleireiro. Fiz o seu cadastro no meu site, ` +
+    `por onde você pode agendar e acompanhar seus horários:\n${location.origin}/conta.html\n\n` +
+    `E-mail: ${c.email}\nSenha: ${senha}\n\nSe quiser, troque a senha depois em “Minha conta”.`;
   const msgConfirmado = (a) =>
     `Oi, ${primeiro(a.nome)}! Aqui é o Léo, do L.S Cabeleireiro. Seu horário está confirmado: ${quando(a)} (${a.servicos.join(" + ")}). Te espero!`;
   const msgLembrete = (a) =>
@@ -120,6 +127,7 @@
         <div class="selos">${selos}</div>
         ${!ativo ? `<div class="acoes-horario">
           <a class="btn btn-linha btn-sm" target="_blank" rel="noopener" href="${wa(a.whatsapp, msgDesmarcado(a, a.motivo_cancelado))}">Avisar cliente do desmarque</a>
+          ${a.data >= dados.hoje ? `<button type="button" class="btn btn-escuro btn-sm" data-acao="reativar">↺ Desfazer desmarque</button>` : ""}
         </div>` : ""}
         ${ativo ? `<div class="acoes-horario">
           ${a.status === "pendente" ? `<button type="button" class="btn btn-escuro btn-sm" data-acao="confirmar">✓ Confirmar horário</button>` : ""}
@@ -149,7 +157,30 @@
       } catch (err) { toast(err.message); b.disabled = false; }
     }
     if (b.dataset.acao === "desmarcar") abrirDesmarcar(a);
+    if (b.dataset.acao === "reativar") {
+      if (!confirm(`Desfazer o desmarque de ${a.nome} (${quando(a)})?\n\nO horário volta para a agenda como confirmado.`)) return;
+      b.disabled = true;
+      try {
+        const r = await API.post(`/api/admin/agendamentos/${id}/reativar`);
+        Object.assign(a, r.agendamento);
+        renderAgenda();
+        abrirAviso(a, r.emailEnviado);
+      } catch (err) { toast(err.message); b.disabled = false; }
+    }
   });
+
+  /* ------------------------------------------------------------ remarcado */
+  const ja = $("#janelaAviso");
+  function abrirAviso(a, emailEnviado) {
+    $("#subAviso").textContent = `${a.nome} · ${quando(a)}` + (emailEnviado ? " · ela também recebeu a confirmação por e-mail." : "");
+    const msg = ja.querySelector("[name=mensagem]");
+    msg.value = msgRemarcado(a);
+    const link = $("#btnEnviarAviso");
+    link.href = wa(a.whatsapp, msg.value);
+    msg.oninput = () => { link.href = wa(a.whatsapp, msg.value); };
+    link.onclick = () => setTimeout(() => ja.close(), 300);
+    ja.showModal();
+  }
 
   /* ------------------------------------------------------------ desmarcar */
   const jd = $("#janelaDesmarcar"), fd = $("#formDesmarcar");
@@ -257,6 +288,58 @@
     }).join("") : `<p class="vazio">Nenhuma cliente encontrada.</p>`;
   }
   $("#buscaCliente").addEventListener("input", () => clientes && renderClientes());
+
+  /* ------------------------------------------------------------ cadastrar cliente */
+  const jc = $("#janelaCliente"), fc = $("#formCliente");
+  let criada = null; // última cliente cadastrada nesta janela
+  API.mascaraTelefone(fc.elements.whatsapp);
+  // Senha simples de ditar e digitar no celular: "ls" + 4 números.
+  const senhaNova = () => `ls${String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0")}`;
+  $("#btnOutraSenha").addEventListener("click", () => { fc.elements.senha.value = senhaNova(); });
+
+  $("#btnNovaCliente").addEventListener("click", () => {
+    fc.reset();
+    fc.elements.senha.value = senhaNova();
+    $(".erro", fc).textContent = "";
+    $(".campos-cliente", fc).hidden = false;
+    $(".msg-cliente", fc).hidden = true;
+    $("#subCliente").hidden = false;
+    $("#btnSalvarCliente").hidden = false; $("#btnSalvarCliente").disabled = false;
+    $("#btnEnviarAcesso").hidden = true;
+    $("#btnFecharCliente").textContent = "Voltar";
+    $("#tituloCliente").textContent = "Cadastrar cliente";
+    jc.showModal();
+    fc.elements.nome.focus();
+  });
+
+  fc.addEventListener("submit", async (e) => {
+    if (e.submitter?.value !== "salvar") return; // "Voltar" só fecha
+    e.preventDefault();
+    const f = fc.elements, btn = $("#btnSalvarCliente");
+    $(".erro", fc).textContent = "";
+    btn.disabled = true;
+    try {
+      const senha = f.senha.value.trim();
+      const r = await API.post("/api/admin/clientes", { nome: f.nome.value, whatsapp: f.whatsapp.value, email: f.email.value, senha });
+      criada = r.cliente;
+      if (clientes) { clientes.push(r.cliente); clientes.sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR")); renderClientes(); }
+      // Agora a janela mostra a mensagem com o acesso, pronta para o WhatsApp.
+      $("#tituloCliente").textContent = "Cliente cadastrada!";
+      $("#subCliente").hidden = true;
+      $(".campos-cliente", fc).hidden = true;
+      $(".msg-cliente", fc).hidden = false;
+      f.mensagem.value = msgAcesso(r.cliente, senha);
+      const link = $("#btnEnviarAcesso");
+      link.href = wa(r.cliente.whatsapp, f.mensagem.value);
+      link.hidden = false;
+      btn.hidden = true;
+      $("#btnFecharCliente").textContent = "Fechar";
+    } catch (err) { $(".erro", fc).textContent = err.message; btn.disabled = false; }
+  });
+  fc.elements.mensagem.addEventListener("input", () => {
+    if (criada) $("#btnEnviarAcesso").href = wa(criada.whatsapp, fc.elements.mensagem.value);
+  });
+  $("#btnEnviarAcesso").addEventListener("click", () => setTimeout(() => jc.close(), 300));
 
   /* ------------------------------------------------------------ início */
   async function abrirPainel() {
