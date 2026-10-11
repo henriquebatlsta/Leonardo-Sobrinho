@@ -84,7 +84,9 @@ async function entrar(env, request) {
     await espera(600);
     throw new Erro(401, "E-mail ou senha incorretos.");
   }
-  return json({ cliente: clientePublico(c) }, 200, { "Set-Cookie": await criarSessao(env, { clienteId: c.id }) });
+  // A conta do Léo (admin = 1) entra já com acesso ao painel.
+  const admin = !!c.admin;
+  return json({ cliente: clientePublico(c), admin }, 200, { "Set-Cookie": await criarSessao(env, { clienteId: c.id, admin }) });
 }
 
 async function sair(env, request) {

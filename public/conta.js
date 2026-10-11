@@ -51,6 +51,7 @@
         : await API.post("/api/entrar", { email: d.email, senha: d.senha });
       fe.reset();
       API.definirCliente(r.cliente);
+      if (r.admin) { location.href = "admin.html"; return; }
       abrirConta();
       if (modo === "cadastro") toast("Conta criada! Complete seu endereço quando quiser.");
     });
