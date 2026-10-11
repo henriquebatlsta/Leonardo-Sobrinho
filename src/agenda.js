@@ -48,6 +48,13 @@ export function motivoIndisponivel({ data, hora, duracao, ocupados, bloqueios })
   if (exp.ultimoHorario && ini > paraMin(exp.ultimoHorario)) return "Esse horário está fora do expediente.";
   if (data === agora.data && ini < agora.minutos + C.antecedenciaMinimaHoras * 60) return "Esse horário já passou ou está muito em cima.";
   if ((C.pausas || []).some((p) => ini >= paraMin(p.inicio) && ini < paraMin(p.fim))) return "Esse horário cai na pausa do salão.";
+  return motivoConflito({ hora, duracao, ocupados, bloqueios });
+}
+
+/** Diz se o horário bate com um bloqueio ou com outra cliente, ou null se não bate. */
+export function motivoConflito({ hora, duracao, ocupados, bloqueios }) {
+  const ini = paraMin(hora);
+  const dur = Math.max(duracao, C.intervaloMinutos);
   for (const b of bloqueios) {
     if (!b.hora_inicio) return "O Léo não vai atender nesse dia.";
     if (sobrepoe(ini, ini + dur, paraMin(b.hora_inicio), paraMin(b.hora_fim))) return "O Léo não vai atender nesse horário.";

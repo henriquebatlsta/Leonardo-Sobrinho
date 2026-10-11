@@ -425,7 +425,8 @@ select { font: inherit; }
   display: grid; grid-template-columns: 96px 1fr auto; gap: .9rem; align-items: start;
   background: #fff; border: 1.5px solid rgba(94, 76, 46, .15); border-radius: 16px; padding: .9rem 1rem;
 }
-.horario.cancelado { opacity: .62; }
+/* Desmarcado fica apagado, mas os botões (avisar, desfazer) continuam nítidos. */
+.horario.cancelado .horario-quando, .horario.cancelado .horario-info > :not(.acoes-horario) { opacity: .62; }
 .horario-quando b { display: block; color: var(--escuro); font-size: .92rem; line-height: 1.25; }
 .horario-quando span { color: var(--oliva); font-weight: 600; font-size: .85rem; }
 .horario-info p { margin: 0 0 .15rem; font-size: .92rem; }
@@ -469,7 +470,9 @@ select { font: inherit; }
 /* Janela de desmarcar */
 .janela { width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 32px); border: 0; border-radius: var(--raio); padding: 1.4rem; background: var(--papel); color: var(--tinta); box-shadow: var(--sombra); }
 .janela::backdrop { background: rgba(42, 31, 15, .55); }
-.janela form { display: grid; gap: .9rem; }
+.janela form { display: grid; gap: .9rem; min-width: 0; }
+.janela label { min-width: 0; }
+.janela input:not([type=radio]), .janela textarea { width: 100%; min-width: 0; }
 .janela h2 { margin: 0; font-size: 1.15rem; }
 .janela textarea { font-weight: 400; font-size: .95rem; }
 .janela .sub { margin: -.5rem 0 0; color: var(--texto-suave); font-size: .9rem; }
@@ -478,6 +481,11 @@ select { font: inherit; }
 .motivos .check { font-size: .95rem; color: var(--tinta); }
 .acoes-janela { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
 .dica-campo { font-size: .78rem; }
+.cab-clientes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; margin-bottom: .6rem; }
+.cab-clientes h2 { margin: 0; }
+.campos-cliente { display: grid; gap: .8rem; }
+.linha-senha { display: flex; gap: .5rem; align-items: center; }
+.linha-senha input { flex: 1; min-width: 0; }
 
 /* Página simples (link de confirmação do e-mail) */
 .pagina-simples { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem; background: var(--creme) url("assets/padrao-1.jpg") center / 520px; }

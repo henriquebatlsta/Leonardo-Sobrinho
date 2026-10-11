@@ -2,7 +2,7 @@
 // As páginas (public/) são servidas direto pela Cloudflare; este Worker só
 // responde /api/* e /confirmar, e roda os lembretes automáticos (cron).
 import { C } from "./config.js";
-import { porId, nomeServico, motivoIndisponivel, paraMin, agoraBrasilia, somaDias, dataValida, horaValida, fmtDataLonga } from "./agenda.js";
+import { porId, nomeServico, motivoIndisponivel, motivoConflito, paraMin, agoraBrasilia, somaDias, dataValida, horaValida, fmtDataLonga } from "./agenda.js";
 import { hashSenha, conferirSenha, criarSessao, sessaoAtual, encerrarSessao, cookieSaida, tokenAleatorio, sha256, iguais } from "./auth.js";
 import { emailConfirmado, emailLembrete, emailDesmarcado, emailRedefinirSenha, emailParaLeo } from "./emails.js";
 
@@ -57,8 +57,8 @@ async function exigirAdmin(env, request) {
 
 /* ------------------------------------------------------------ clientes */
 
-async function cadastrar(env, request) {
-  const b = await corpo(request);
+// Valida e grava uma conta nova. Usado pelo cadastro da cliente e pelo do painel.
+async function novoCliente(env, b) {
   const nome = texto(b.nome, 120);
   const email = texto(b.email, 200).toLowerCase();
   const whatsapp = soDigitos(b.whatsapp).slice(0, 13);
@@ -74,9 +74,12 @@ async function cadastrar(env, request) {
     `INSERT INTO clientes (nome, email, whatsapp, senha_hash, senha_salt, ${CAMPOS_ENDERECO.join(", ")})
      VALUES (?, ?, ?, ?, ?, ${CAMPOS_ENDERECO.map(() => "?").join(", ")})`
   ).bind(nome, email, whatsapp, hash, salt, ...CAMPOS_ENDERECO.map((k) => end[k])).run();
-  const id = r.meta.last_row_id;
-  const cliente = await env.DB.prepare("SELECT * FROM clientes WHERE id = ?").bind(id).first();
-  return json({ cliente: clientePublico(cliente) }, 201, { "Set-Cookie": await criarSessao(env, { clienteId: id }) });
+  return env.DB.prepare("SELECT * FROM clientes WHERE id = ?").bind(r.meta.last_row_id).first();
+}
+
+async function cadastrar(env, request) {
+  const cliente = await novoCliente(env, await corpo(request));
+  return json({ cliente: clientePublico(cliente) }, 201, { "Set-Cookie": await criarSessao(env, { clienteId: cliente.id }) });
 }
 
 async function entrar(env, request) {
@@ -308,6 +311,22 @@ async function adminDesmarcar(env, request, id) {
   return json({ agendamento: paraAdmin(await agendamentoCompleto(env, id)), emailEnviado });
 }
 
+// O Léo desfaz um desmarque: o horário volta confirmado, se ainda estiver livre.
+async function adminReativar(env, request, id) {
+  await exigirAdmin(env, request);
+  const a = await agendamentoCompleto(env, id);
+  if (!a) throw new Erro(404, "Agendamento não encontrado.");
+  if (a.status !== "cancelado") throw new Erro(400, "Esse horário não está desmarcado.");
+  if (a.data < agoraBrasilia().data) throw new Erro(400, "Esse dia já passou.");
+  const motivo = motivoConflito({ hora: a.hora, duracao: a.duracao, ...(await dadosDoDia(env, a.data)) });
+  if (motivo) throw new Erro(409, motivo === "Esse horário acabou de ser reservado por outra pessoa."
+    ? "Esse horário já foi ocupado por outra cliente." : motivo);
+  await env.DB.prepare("UPDATE agendamentos SET status = 'confirmado', motivo_cancelado = '' WHERE id = ?").bind(id).run();
+  const novo = await agendamentoCompleto(env, id);
+  const emailEnviado = await emailConfirmado(env, novo);
+  return json({ agendamento: paraAdmin(novo), emailEnviado });
+}
+
 async function adminCriarBloqueio(env, request) {
   await exigirAdmin(env, request);
   const b = await corpo(request);
@@ -341,6 +360,15 @@ async function adminClientes(env, request) {
     `SELECT c.*, (SELECT COUNT(*) FROM agendamentos a WHERE a.cliente_id = c.id AND a.status != 'cancelado') AS total
      FROM clientes c ORDER BY c.nome COLLATE NOCASE`).all();
   return json({ clientes: results.map((c) => ({ ...clientePublico(c), criado_em: c.criado_em, total: c.total })) });
+}
+
+// O Léo cadastra uma cliente (com e-mail e uma senha para mandar a ela).
+async function adminCriarCliente(env, request) {
+  await exigirAdmin(env, request);
+  const c = await novoCliente(env, await corpo(request)).catch((e) => {
+    throw e.status === 409 ? new Erro(409, "Já existe uma conta com esse e-mail. Procure a cliente na lista.") : e;
+  });
+  return json({ cliente: { ...clientePublico(c), criado_em: c.criado_em, total: 0 } }, 201);
 }
 
 /* ------------------------------------------------------------ lembretes (cron) */
@@ -393,9 +421,11 @@ async function rotear(request, env) {
   if (p === "/api/admin/agenda" && m === "GET") return adminAgenda(env, request, url);
   if ((r = p.match(/^\/api\/admin\/agendamentos\/(\d+)\/confirmar$/)) && m === "POST") return adminConfirmar(env, request, Number(r[1]));
   if ((r = p.match(/^\/api\/admin\/agendamentos\/(\d+)\/desmarcar$/)) && m === "POST") return adminDesmarcar(env, request, Number(r[1]));
+  if ((r = p.match(/^\/api\/admin\/agendamentos\/(\d+)\/reativar$/)) && m === "POST") return adminReativar(env, request, Number(r[1]));
   if (p === "/api/admin/bloqueios" && m === "POST") return adminCriarBloqueio(env, request);
   if ((r = p.match(/^\/api\/admin\/bloqueios\/(\d+)$/)) && m === "DELETE") return adminRemoverBloqueio(env, request, Number(r[1]));
   if (p === "/api/admin/clientes" && m === "GET") return adminClientes(env, request);
+  if (p === "/api/admin/clientes" && m === "POST") return adminCriarCliente(env, request);
 
   if (p.startsWith("/api/")) throw new Erro(404, "Rota não encontrada.");
   return env.ASSETS.fetch(request);
