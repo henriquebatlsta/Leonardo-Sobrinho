@@ -447,8 +447,23 @@ select { font: inherit; }
 /* Painel do Léo */
 .abas-painel { background: var(--papel); box-shadow: 0 12px 30px -24px rgba(0, 0, 0, .6); }
 .aviso-email { margin: 0; background: #FFF4D6; color: #6B4E00; border-radius: 14px; padding: .8rem 1rem; font-size: .85rem; }
-.resumo-agenda { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin-bottom: .8rem; }
-.resumo-agenda div { background: var(--papel); border-radius: 16px; padding: .8rem; text-align: center; }
+.resumo-agenda { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; margin-bottom: .8rem; }
+.resumo-agenda > * { background: var(--papel); border-radius: 16px; padding: .8rem .3rem; text-align: center; border: 0; font: inherit; }
+.resumo-agenda button { cursor: pointer; }
+.resumo-agenda .alerta { background: #C2410C; animation: pulsa 1.6s ease-in-out infinite; }
+.resumo-agenda .alerta b, .resumo-agenda .alerta span { color: #fff; }
+@keyframes pulsa { 50% { box-shadow: 0 0 0 6px rgba(194, 65, 12, .25); } }
+@media (prefers-reduced-motion: reduce) { .resumo-agenda .alerta { animation: none; } }
+
+/* Alerta "para lembrar": clientes com horário amanhã */
+.alerta-lembrete { background: #C2410C; color: #fff; border-radius: var(--raio); padding: 1rem 1.1rem; margin-bottom: .8rem; box-shadow: 0 14px 30px -18px rgba(194, 65, 12, .9); }
+.alerta-lembrete h2 { color: #fff; font-size: 1.08rem; margin: 0 0 .25rem; }
+.alerta-lembrete p { margin: 0 0 .7rem; font-size: .88rem; color: #FFE8DC; }
+.alerta-lembrete ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.alerta-lembrete li { display: flex; align-items: center; justify-content: space-between; gap: .6rem; background: rgba(255, 255, 255, .14); border-radius: 12px; padding: .55rem .6rem .55rem .8rem; font-size: .9rem; }
+.alerta-lembrete li span { min-width: 0; overflow-wrap: anywhere; }
+.btn-alerta { background: #fff; color: #9A3412; white-space: nowrap; }
+.btn-alerta:hover { background: #FFE8DC; }
 .resumo-agenda b { display: block; font-size: 1.6rem; line-height: 1.1; color: var(--escuro); }
 .resumo-agenda span { font-size: .75rem; color: var(--texto-suave); }
 .resumo-agenda .destaque { background: var(--escuro); }
