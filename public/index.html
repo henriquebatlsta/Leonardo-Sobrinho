@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>L.S Cabeleireiro · Agende seu horário</title>
+  <meta name="description" content="Agende seu horário com Leonardo Sobrinho — cortes, tratamentos, alisamentos e coloração.">
+  <meta name="theme-color" content="#342611">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/monograma.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Allura&family=Bebas+Neue&family=Kalam:wght@300;400&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Abertura com a animação do logo -->
+  <div class="splash" id="splash" aria-hidden="true">
+    <video muted playsinline preload="auto"><source src="assets/abertura.webm" type="video/webm"><source src="assets/abertura.mp4" type="video/mp4"></video>
+  </div>
+
+  <header class="topo" id="topo">
+    <a href="#inicio" class="marca" aria-label="L.S Cabeleireiro — início">
+      <img src="assets/monograma.png" alt="" width="44" height="34">
+      <span><b>L.S</b> Cabeleireiro</span>
+    </a>
+    <nav class="menu" aria-label="Seções">
+      <a href="#servicos">Serviços</a>
+      <a href="#sobre">Sobre</a>
+    </nav>
+    <a href="#agendar" class="btn btn-escuro btn-sm">Agendar</a>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero" id="inicio">
+      <img class="hero-deco" src="assets/moldura-ferramentas.png" alt="" aria-hidden="true">
+      <div class="hero-texto">
+        <p class="sobretitulo">Cabeleireiro · Resenhas · Dicas</p>
+        <h1>Leonardo<br>Sobrinho</h1>
+        <p class="manuscrito">Cortes | Tratamentos | Coloração</p>
+        <p class="lead">Escolha os serviços, o dia e o horário. Em menos de um minuto seu horário está reservado.</p>
+        <div class="acoes">
+          <a href="#agendar" class="btn btn-escuro">Agendar horário <span aria-hidden="true">→</span></a>
+          <a href="#servicos" class="btn btn-linha">Ver serviços e preços</a>
+        </div>
+      </div>
+      <div class="hero-foto">
+        <picture><source srcset="assets/leo-sorrindo.webp" type="image/webp"><img src="assets/leo-sorrindo.png" alt="Leonardo Sobrinho sorrindo, de camiseta preta" width="570" height="1012"></picture>
+      </div>
+      <div class="faixa">
+        <span>▶ Agende online</span>
+        <span class="faixa-dir">Me acompanhe: <b class="pilula">@sobrinho.leonardo</b></span>
+      </div>
+    </section>
+
+    <!-- CATÁLOGO -->
+    <section class="servicos" id="servicos">
+      <div class="servicos-cab">
+        <h2 class="script">Tabela de Preços</h2>
+        <p>Toque em <b>Adicionar</b> nos serviços que você quer e depois escolha o horário.</p>
+      </div>
+      <div class="abas" role="tablist" id="abas"></div>
+      <div class="grade-servicos" id="gradeServicos"></div>
+      <p class="aviso-preco">Valores “a partir de”: o preço final depende do comprimento e volume do cabelo, confirmado no salão.</p>
+    </section>
+
+    <!-- AGENDAMENTO -->
+    <section class="agendar" id="agendar">
+      <div class="agendar-cab">
+        <img src="assets/secador.png" alt="" aria-hidden="true" class="agendar-deco">
+        <p class="sobretitulo">Agendamento</p>
+        <h2>Reserve seu horário</h2>
+      </div>
+
+      <div class="cartao-agenda" id="cartaoAgenda">
+        <ol class="passos" id="passos">
+          <li data-p="1"><span>1</span>Serviços</li>
+          <li data-p="2"><span>2</span>Data</li>
+          <li data-p="3"><span>3</span>Horário</li>
+          <li data-p="4"><span>4</span>Seus dados</li>
+        </ol>
+
+        <!-- Passo 1 -->
+        <div class="passo" data-passo="1">
+          <h3>O que vamos fazer?</h3>
+          <div id="listaSelecao" class="lista-selecao"></div>
+          <p class="vazio" id="selecaoVazia">Nenhum serviço escolhido ainda. <a href="#servicos">Abrir o catálogo</a></p>
+          <details class="add-rapido">
+            <summary>+ Adicionar outro serviço</summary>
+            <div id="addRapido" class="chips"></div>
+          </details>
+        </div>
+
+        <!-- Passo 2 -->
+        <div class="passo" data-passo="2" hidden>
+          <h3>Qual dia fica melhor?</h3>
+          <div class="mes" id="mesLabel"></div>
+          <div class="dias" id="dias" role="listbox" aria-label="Escolha o dia"></div>
+        </div>
+
+        <!-- Passo 3 -->
+        <div class="passo" data-passo="3" hidden>
+          <h3>Escolha o horário</h3>
+          <p class="sub" id="diaEscolhido"></p>
+          <div class="periodos" id="horarios"></div>
+        </div>
+
+        <!-- Passo 4 -->
+        <form class="passo" data-passo="4" id="formDados" hidden novalidate>
+          <h3>Seus dados</h3>
+          <label>Nome completo
+            <input name="nome" autocomplete="name" required placeholder="Como podemos te chamar?">
+          </label>
+          <label>WhatsApp
+            <input name="whatsapp" type="tel" inputmode="tel" autocomplete="tel" required placeholder="(11) 99999-9999">
+          </label>
+          <label>E-mail <small>(opcional, para receber a confirmação)</small>
+            <input name="email" type="email" autocomplete="email" placeholder="voce@email.com">
+          </label>
+          <label>Observações <small>(opcional)</small>
+            <textarea name="obs" rows="3" placeholder="Ex.: cabelo comprido, quero manter o comprimento…"></textarea>
+          </label>
+          <input type="text" name="_honey" class="honey" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <p class="erro" id="erroForm" role="alert"></p>
+        </form>
+
+        <!-- Sucesso -->
+        <div class="passo sucesso" data-passo="5" hidden>
+          <img src="assets/monograma.png" alt="" class="sucesso-marca">
+          <h3 class="script">Horário reservado!</h3>
+          <p id="sucessoTexto"></p>
+          <div class="resumo" id="resumoFinal"></div>
+          <p class="modo-teste" id="modoTeste" hidden>Modo de teste: o e-mail de destino ainda não foi configurado, então nada foi enviado.</p>
+          <div class="acoes">
+            <button type="button" class="btn btn-linha" id="btnIcs">Salvar na minha agenda</button>
+            <a class="btn btn-escuro" id="btnWhats" target="_blank" rel="noopener" hidden>Falar no WhatsApp</a>
+          </div>
+          <button type="button" class="link" id="btnNovo">Fazer outro agendamento</button>
+        </div>
+
+        <!-- Rodapé do cartão -->
+        <div class="cartao-rodape" id="cartaoRodape">
+          <div class="total">
+            <small id="totalDuracao"></small>
+            <strong id="totalPreco">—</strong>
+          </div>
+          <div class="nav-passos">
+            <button type="button" class="btn btn-linha" id="btnVoltar">Voltar</button>
+            <button type="button" class="btn btn-escuro" id="btnAvancar">Continuar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SOBRE -->
+    <section class="sobre" id="sobre">
+      <div class="sobre-foto">
+        <img src="assets/leo-retrato.jpg" alt="Retrato de Leonardo Sobrinho" width="1000" height="1000" loading="lazy">
+      </div>
+      <div class="sobre-texto">
+        <p class="sobretitulo">Quem vai cuidar de você</p>
+        <h2>Leonardo Sobrinho</h2>
+        <p class="manuscrito">Resenhas | Dicas | Tutoriais</p>
+        <p>Cabeleireiro especializado em tratamentos, alisamentos, coloração e cortes. Além do salão, compartilha toda semana no YouTube e no Instagram resenhas de produtos, dicas de cuidado e tutoriais para você manter o cabelo bonito em casa.</p>
+        <div class="redes" id="redes"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <img src="assets/logo-claro.png" alt="L.S Cabeleireiro" class="rodape-logo" width="900" height="714" loading="lazy">
+    <p id="rodapeEndereco"></p>
+    <p class="rodape-pe">© <span id="ano"></span> L.S Cabeleireiro · Leonardo Sobrinho</p>
+  </footer>
+
+  <!-- Barra flutuante da seleção -->
+  <div class="barra-selecao" id="barraSelecao" hidden>
+    <div>
+      <b id="barraQtd"></b>
+      <small id="barraPreco"></small>
+    </div>
+    <a href="#agendar" class="btn btn-claro btn-sm" id="barraBtn">Escolher horário →</a>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

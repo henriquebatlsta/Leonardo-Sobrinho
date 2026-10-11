@@ -1,0 +1,9 @@
+{
+  // Site do Leonardo Sobrinho (L.S Cabeleireiro), servido pela Cloudflare.
+  // O nome precisa ser igual ao do Worker no painel da Cloudflare.
+  "name": "small-voice-493b",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public"
+  }
+}
