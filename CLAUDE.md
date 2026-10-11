@@ -7,4 +7,4 @@ Site de agendamento do L.S Cabeleireiro, servido pela Cloudflare (Worker `small-
 - Regras de horário existem em dois lugares e precisam ficar iguais: `public/app.js` (`horariosDoDia`) e `src/agenda.js` (`motivoIndisponivel`).
 - Datas são AAAA-MM-DD no horário de Brasília (UTC-3).
 - When interacting with Cloudflare, use the `cf` CLI unless the project has a Wrangler configuration file. Este projeto tem `wrangler.jsonc`, então use Wrangler aqui.
-- A publicação acontece pela integração Git da Cloudflare a partir da branch `main`.
+- A publicação acontece pela integração Git da Cloudflare a partir da branch `main`. O comando de implantação lá é só `npx wrangler deploy`, que não aplica migrações: aplique-as antes com `npx wrangler d1 migrations apply DB --remote`.
