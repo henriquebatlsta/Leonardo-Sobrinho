@@ -307,7 +307,8 @@
     $$(".abas-conta [data-modo]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.modo === estado.modoConta)));
     $$("[data-so]", formConta).forEach((el) => { el.hidden = el.dataset.so !== estado.modoConta; });
     formConta.elements.senha.autocomplete = cad ? "new-password" : "current-password";
-    $("#linkConta").textContent = c ? "Minha conta" : "Entrar";
+    $("#linkConta").textContent = c?.admin ? "Painel" : c ? "Minha conta" : "Entrar";
+    $("#linkConta").href = c?.admin ? "admin.html" : "conta.html";
   }
 
   $$(".abas-conta [data-modo]").forEach((b) => b.addEventListener("click", () => {

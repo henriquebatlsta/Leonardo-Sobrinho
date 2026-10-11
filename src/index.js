@@ -25,7 +25,7 @@ const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const CAMPOS_ENDERECO = ["cep", "rua", "numero", "complemento", "bairro", "cidade", "uf"];
 const clientePublico = (c) => ({
-  id: c.id, nome: c.nome, email: c.email, whatsapp: c.whatsapp,
+  id: c.id, nome: c.nome, email: c.email, whatsapp: c.whatsapp, admin: !!c.admin,
   ...Object.fromEntries(CAMPOS_ENDERECO.map((k) => [k, c[k]])),
 });
 
@@ -48,8 +48,11 @@ async function exigirCliente(env, request) {
 }
 async function exigirAdmin(env, request) {
   const s = await sessaoAtual(env, request);
-  if (!s || !s.admin) throw new Erro(401, "Entre no painel com o e-mail e a senha do Léo.");
-  return s;
+  if (s && s.admin) return s;
+  // Sessão aberta antes de a conta virar admin, ou pelo login comum: vale a marca da conta.
+  const c = s && s.cliente_id && (await env.DB.prepare("SELECT admin FROM clientes WHERE id = ?").bind(s.cliente_id).first());
+  if (!c || !c.admin) throw new Erro(401, "Entre no painel com o e-mail e a senha do Léo.");
+  return { ...s, admin: true };
 }
 
 /* ------------------------------------------------------------ clientes */
