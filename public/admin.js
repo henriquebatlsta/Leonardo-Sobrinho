@@ -85,10 +85,13 @@
     const ativos = dados.agendamentos.filter((a) => a.status !== "cancelado");
     const pend = ativos.filter((a) => a.status === "pendente").length;
     const hoje = ativos.filter((a) => a.data === dados.hoje).length;
+    const lembrar = paraLembrar();
     $("#resumoAgenda").innerHTML = `
       <div><b>${hoje}</b><span>hoje</span></div>
       <div><b>${ativos.length}</b><span>próximos</span></div>
-      <div class="${pend ? "destaque" : ""}"><b>${pend}</b><span>para confirmar</span></div>`;
+      <div class="${pend ? "destaque" : ""}"><b>${pend}</b><span>para confirmar</span></div>
+      <button type="button" class="${lembrar.length ? "alerta" : ""}" data-ir="alertaLembrete"><b>${lembrar.length}</b><span>para lembrar</span></button>`;
+    renderAlerta(lembrar);
 
     const bloqDia = {};
     dados.bloqueios.forEach((b) => (bloqDia[b.data] ||= []).push(b));
@@ -103,6 +106,41 @@
       return `<section class="dia-agenda"><h2>${rot}${esc(API.fmtData(d))}</h2>${bl}${itens}</section>`;
     }).join("");
   }
+
+  // Clientes com horário amanhã que ainda não receberam lembrete (nem confirmaram presença).
+  const paraLembrar = () => dados.agendamentos.filter((a) =>
+    a.status !== "cancelado" && eAmanha(a) && !a.lembrete_enviado && !a.cliente_confirmou);
+
+  function renderAlerta(lista) {
+    const el = $("#alertaLembrete");
+    el.hidden = !lista.length;
+    if (!lista.length) return;
+    el.innerHTML = `
+      <h2>🔔 ${lista.length === 1 ? "Você tem 1 cliente para lembrar hoje!" : `Você tem ${lista.length} clientes para lembrar hoje!`}</h2>
+      <p>${lista.length === 1 ? "Ela tem horário" : "Elas têm horário"} amanhã, ${esc(API.fmtData(amanha()))}. Mande a confirmação pelo WhatsApp:</p>
+      <ul>${lista.map((a) => `
+        <li data-id="${a.id}">
+          <span><b>${esc(a.hora)}</b> · ${esc(a.nome)}</span>
+          <a class="btn btn-sm btn-alerta" target="_blank" rel="noopener" data-lembrete="${a.id}" href="${wa(a.whatsapp, msgLembrete(a))}">Enviar lembrete</a>
+        </li>`).join("")}
+      </ul>`;
+  }
+
+  // Abrir o WhatsApp do lembrete conta como lembrete enviado.
+  async function marcarLembrete(id) {
+    const a = dados.agendamentos.find((x) => x.id === id);
+    if (!a || a.lembrete_enviado) return;
+    a.lembrete_enviado = true;
+    setTimeout(renderAgenda, 400); // deixa o link abrir antes de redesenhar
+    try { Object.assign(a, (await API.post(`/api/admin/agendamentos/${id}/lembrete`)).agendamento); }
+    catch (err) { a.lembrete_enviado = false; renderAgenda(); toast(err.message); }
+  }
+  document.addEventListener("click", (e) => {
+    const l = e.target.closest("[data-lembrete]");
+    if (l) marcarLembrete(Number(l.dataset.lembrete));
+    const ir = e.target.closest("[data-ir]");
+    if (ir && !$(`#${ir.dataset.ir}`).hidden) $(`#${ir.dataset.ir}`).scrollIntoView({ behavior: "smooth", block: "center" });
+  });
 
   const amanha = () => { const d = new Date(`${dados.hoje}T12:00:00`); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); };
   const eAmanha = (a) => a.data === amanha();
@@ -131,7 +169,7 @@
         </div>` : ""}
         ${ativo ? `<div class="acoes-horario">
           ${a.status === "pendente" ? `<button type="button" class="btn btn-escuro btn-sm" data-acao="confirmar">✓ Confirmar horário</button>` : ""}
-          ${eAmanha(a) ? `<a class="btn btn-linha btn-sm" target="_blank" rel="noopener" href="${wa(a.whatsapp, msgLembrete(a))}">WhatsApp: lembrete</a>`
+          ${eAmanha(a) ? `<a class="btn btn-linha btn-sm" target="_blank" rel="noopener" data-lembrete="${a.id}" href="${wa(a.whatsapp, msgLembrete(a))}">WhatsApp: lembrete</a>`
             : a.status === "confirmado" ? `<a class="btn btn-linha btn-sm" target="_blank" rel="noopener" href="${wa(a.whatsapp, msgConfirmado(a))}">WhatsApp: confirmação</a>` : ""}
           <button type="button" class="link" data-acao="desmarcar">Desmarcar</button>
         </div>` : ""}

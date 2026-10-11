@@ -311,6 +311,15 @@ async function adminDesmarcar(env, request, id) {
   return json({ agendamento: paraAdmin(await agendamentoCompleto(env, id)), emailEnviado });
 }
 
+// O Léo mandou o lembrete pelo WhatsApp: some do alerta "para lembrar".
+async function adminLembreteEnviado(env, request, id) {
+  await exigirAdmin(env, request);
+  const a = await agendamentoCompleto(env, id);
+  if (!a) throw new Erro(404, "Agendamento não encontrado.");
+  await env.DB.prepare("UPDATE agendamentos SET lembrete_enviado = 1 WHERE id = ?").bind(id).run();
+  return json({ agendamento: paraAdmin(await agendamentoCompleto(env, id)) });
+}
+
 // O Léo desfaz um desmarque: o horário volta confirmado, se ainda estiver livre.
 async function adminReativar(env, request, id) {
   await exigirAdmin(env, request);
@@ -422,6 +431,7 @@ async function rotear(request, env) {
   if ((r = p.match(/^\/api\/admin\/agendamentos\/(\d+)\/confirmar$/)) && m === "POST") return adminConfirmar(env, request, Number(r[1]));
   if ((r = p.match(/^\/api\/admin\/agendamentos\/(\d+)\/desmarcar$/)) && m === "POST") return adminDesmarcar(env, request, Number(r[1]));
   if ((r = p.match(/^\/api\/admin\/agendamentos\/(\d+)\/reativar$/)) && m === "POST") return adminReativar(env, request, Number(r[1]));
+  if ((r = p.match(/^\/api\/admin\/agendamentos\/(\d+)\/lembrete$/)) && m === "POST") return adminLembreteEnviado(env, request, Number(r[1]));
   if (p === "/api/admin/bloqueios" && m === "POST") return adminCriarBloqueio(env, request);
   if ((r = p.match(/^\/api\/admin\/bloqueios\/(\d+)$/)) && m === "DELETE") return adminRemoverBloqueio(env, request, Number(r[1]));
   if (p === "/api/admin/clientes" && m === "GET") return adminClientes(env, request);
