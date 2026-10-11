@@ -18,7 +18,7 @@ Site de agendamento do L.S Cabeleireiro (Leonardo Sobrinho), na Cloudflare (Work
 
 ## Configuração na Cloudflare (uma vez)
 
-1. **Senha do painel:** Worker `small-voice-493b` → Settings → Variables and Secrets → adicionar **Secret** `ADMIN_PASSWORD`.
+1. O Léo entra no painel com o e-mail e a senha da conta dele (conta com `admin = 1` no banco). Para trocar a senha, ele usa "Minha conta".
 2. **Envio de e-mails:** Email Service → Email Sending → ativar o domínio `leonardosobrinho.com` (exige o plano Workers Paid). Os e-mails saem de `agenda@leonardosobrinho.com`. Sem isso o site funciona, e o painel oferece botões de WhatsApp no lugar.
 3. **Publicação automática:** Worker → Settings → Build → conectar o repositório, branch `main`, comando de deploy `npm run deploy` (aplica o banco e publica).
 
@@ -26,7 +26,7 @@ Site de agendamento do L.S Cabeleireiro (Leonardo Sobrinho), na Cloudflare (Work
 
 ```sh
 npm install
-printf 'ADMIN_PASSWORD=teste\nSITE_URL=http://localhost:8787\n' > .dev.vars
+printf 'SITE_URL=http://localhost:8787\n' > .dev.vars
 npm run db:local
 npm run dev
 ```

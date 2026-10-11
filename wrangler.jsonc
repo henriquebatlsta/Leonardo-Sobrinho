@@ -34,7 +34,6 @@
     "EMAIL_FROM": "agenda@leonardosobrinho.com"
   },
 
-  // A senha do painel (ADMIN_PASSWORD) NÃO fica aqui: ela é um segredo
-  // criado no painel da Cloudflare (Settings → Variables and Secrets).
+  // O painel do Léo usa o login da conta dele (clientes.admin = 1 no banco).
   "observability": { "enabled": true }
 }

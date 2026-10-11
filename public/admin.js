@@ -27,7 +27,7 @@
     const f = e.target, erro = $(".erro", f), btn = $("button", f);
     erro.textContent = ""; btn.disabled = true;
     try {
-      await API.post("/api/admin/entrar", { senha: f.elements.senha.value });
+      await API.post("/api/admin/entrar", { email: f.elements.email.value, senha: f.elements.senha.value });
       f.reset();
       await abrirPainel();
     } catch (err) { erro.textContent = err.message; } finally { btn.disabled = false; }

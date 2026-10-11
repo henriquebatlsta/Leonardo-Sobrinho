@@ -48,7 +48,7 @@ async function exigirCliente(env, request) {
 }
 async function exigirAdmin(env, request) {
   const s = await sessaoAtual(env, request);
-  if (!s || !s.admin) throw new Erro(401, "Entre no painel com a senha do salão.");
+  if (!s || !s.admin) throw new Erro(401, "Entre no painel com o e-mail e a senha do Léo.");
   return s;
 }
 
@@ -255,14 +255,16 @@ function pagina(titulo, msg, status = 200) {
 
 /* ------------------------------------------------------------ painel do Léo */
 
+// O Léo entra com o e-mail e a senha da conta dele (clientes.admin = 1).
 async function adminEntrar(env, request) {
   const b = await corpo(request);
-  if (!env.ADMIN_PASSWORD) throw new Erro(503, "A senha do painel ainda não foi configurada na Cloudflare (variável ADMIN_PASSWORD).");
-  if (typeof b.senha !== "string" || !iguais(b.senha, env.ADMIN_PASSWORD)) {
+  const email = texto(b.email, 200).toLowerCase();
+  const c = await env.DB.prepare("SELECT * FROM clientes WHERE email = ? AND admin = 1").bind(email).first();
+  if (!c || typeof b.senha !== "string" || !(await conferirSenha(b.senha, c))) {
     await espera(1000);
-    throw new Erro(401, "Senha incorreta.");
+    throw new Erro(401, "E-mail ou senha incorretos.");
   }
-  return json({ ok: true }, 200, { "Set-Cookie": await criarSessao(env, { admin: true }) });
+  return json({ ok: true }, 200, { "Set-Cookie": await criarSessao(env, { clienteId: c.id, admin: true }) });
 }
 
 const paraAdmin = (a) => ({ ...paraCliente(a), nome: a.nome, email: a.email, whatsapp: a.whatsapp, lembrete_enviado: !!a.lembrete_enviado, token: a.token });
