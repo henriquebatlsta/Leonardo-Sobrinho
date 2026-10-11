@@ -45,6 +45,7 @@ export function motivoIndisponivel({ data, hora, duracao, ocupados, bloqueios })
   const dur = Math.max(duracao, C.intervaloMinutos);
   const abre = paraMin(exp.abre), fecha = paraMin(exp.fecha);
   if (ini < abre || ini + dur > fecha || (ini - abre) % C.intervaloMinutos) return "Esse horário está fora do expediente.";
+  if (exp.ultimoHorario && ini > paraMin(exp.ultimoHorario)) return "Esse horário está fora do expediente.";
   if (data === agora.data && ini < agora.minutos + C.antecedenciaMinimaHoras * 60) return "Esse horário já passou ou está muito em cima.";
   if ((C.pausas || []).some((p) => ini >= paraMin(p.inicio) && ini < paraMin(p.fim))) return "Esse horário cai na pausa do salão.";
   for (const b of bloqueios) {

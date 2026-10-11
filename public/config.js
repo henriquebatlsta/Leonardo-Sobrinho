@@ -26,13 +26,16 @@ window.LS_CONFIG = {
 
   // Funcionamento. Dias: 0=domingo, 1=segunda ... 6=sábado.
   // null = fechado. Horários no formato "HH:MM".
+  // abre: primeiro horário. ultimoHorario: último horário em que a cliente
+  // pode começar (opcional). fecha: até quando o Léo trabalha; o serviço
+  // precisa terminar até lá. Ex.: às 18:00 cabe um serviço de até 3 horas.
   horarios: {
     0: null,
     1: null,
-    2: { abre: "09:00", fecha: "19:00" },
-    3: { abre: "09:00", fecha: "19:00" },
-    4: { abre: "09:00", fecha: "19:00" },
-    5: { abre: "09:00", fecha: "19:00" },
+    2: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
+    3: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
+    4: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
+    5: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
     6: { abre: "09:00", fecha: "17:00" },
   },
   intervaloMinutos: 30,          // de quanto em quanto tempo aparecem os horários
