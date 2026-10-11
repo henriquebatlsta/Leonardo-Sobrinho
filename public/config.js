@@ -30,8 +30,8 @@ window.LS_CONFIG = {
   // pode começar (opcional). fecha: até quando o Léo trabalha; o serviço
   // precisa terminar até lá. Ex.: às 18:00 cabe um serviço de até 3 horas.
   horarios: {
-    0: null,
-    1: null,
+    0: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
+    1: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
     2: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
     3: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
     4: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
