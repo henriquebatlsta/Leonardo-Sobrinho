@@ -78,6 +78,7 @@
     const bloqueios = (estado.bloqueios[chaveDia(d)] || []).map((b) => [paraMin(b.hora_inicio), paraMin(b.hora_fim)]);
     const dur = Math.max(duracaoTotal(), C.intervaloMinutos);
     const abre = paraMin(exp.abre), fecha = paraMin(exp.fecha);
+    const ultimo = exp.ultimoHorario ? paraMin(exp.ultimoHorario) : fecha;
     let minimo = -1;
     if (mesmoDia(d, new Date())) {
       const agora = new Date();
@@ -85,7 +86,7 @@
     }
     const pausas = (C.pausas || []).map((p) => [paraMin(p.inicio), paraMin(p.fim)]);
     const out = [];
-    for (let t = abre; t + dur <= fecha; t += C.intervaloMinutos) {
+    for (let t = abre; t <= ultimo && t + dur <= fecha; t += C.intervaloMinutos) {
       if (t < minimo) continue;
       if (pausas.some(([i, f]) => t >= i && t < f)) continue; // não começa durante a pausa
       if ([...ocupados, ...bloqueios].some(([i, f]) => sobrepoe(t, t + dur, i, f))) continue;
