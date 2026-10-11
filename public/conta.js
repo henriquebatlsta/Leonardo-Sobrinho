@@ -185,6 +185,7 @@
   async function rotear() {
     if (/redefinir=/.test(location.hash)) return mostrar("telaRedefinir");
     if (location.hash === "#esqueci") return mostrar("telaEsqueci");
+    if (API.cliente?.admin) return location.replace("admin.html"); // o Léo vai direto para o painel
     if (API.cliente) return abrirConta();
     mostrar("telaEntrar");
   }
