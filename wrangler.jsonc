@@ -2,8 +2,39 @@
   // Site do Leonardo Sobrinho (L.S Cabeleireiro), servido pela Cloudflare.
   // O nome precisa ser igual ao do Worker no painel da Cloudflare.
   "name": "small-voice-493b",
+  "main": "src/index.js",
   "compatibility_date": "2026-10-01",
+
+  // As páginas ficam em public/. O Worker só entra em /api/* e /confirmar.
   "assets": {
-    "directory": "./public"
-  }
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/confirmar"]
+  },
+
+  // Banco de dados com clientes, agendamentos e dias bloqueados.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "leonardo-sobrinho-db",
+      "database_id": "e79b2c6c-8301-4d0a-9b0c-837a240e5022",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // De hora em hora o Worker procura quem tem horário amanhã e manda o lembrete
+  // (só a partir das 9h de Brasília, e uma vez por agendamento).
+  "triggers": { "crons": ["5 * * * *"] },
+
+  // Envio de e-mails para as clientes (Cloudflare Email Service).
+  "send_email": [{ "name": "EMAIL" }],
+
+  "vars": {
+    "SITE_URL": "https://leonardosobrinho.com",
+    "EMAIL_FROM": "agenda@leonardosobrinho.com"
+  },
+
+  // A senha do painel (ADMIN_PASSWORD) NÃO fica aqui: ela é um segredo
+  // criado no painel da Cloudflare (Settings → Variables and Secrets).
+  "observability": { "enabled": true }
 }

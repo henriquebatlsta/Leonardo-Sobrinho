@@ -1,6 +1,7 @@
 (() => {
   "use strict";
   const C = window.LS_CONFIG;
+  const API = window.LS_API;
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -18,6 +19,10 @@
     hora: null,    // "HH:MM"
     passo: 1,
     aba: "todos",
+    modoConta: "cadastro",
+    // Horários já marcados e bloqueios do Léo, por dia ("AAAA-MM-DD").
+    ocupados: {},
+    bloqueios: {},
   };
 
   /* ------------------------------------------------------------ splash */
@@ -51,9 +56,26 @@
   const duracaoTotal = () => estado.sel.reduce((t, id) => t + porId[id].duracao, 0);
   const precoTotal = () => estado.sel.reduce((t, id) => t + porId[id].preco, 0);
 
+  const chaveDia = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const sobrepoe = (a1, a2, b1, b2) => a1 < b2 && b1 < a2;
+  const diaBloqueado = (d) => (estado.bloqueios[chaveDia(d)] || []).some((b) => !b.hora_inicio);
+
+  async function carregarDisponibilidade() {
+    try {
+      const r = await API.get("/api/disponibilidade");
+      estado.ocupados = {}; estado.bloqueios = {};
+      r.ocupados.forEach((o) => (estado.ocupados[o.data] ||= []).push(o));
+      r.bloqueios.forEach((b) => (estado.bloqueios[b.data] ||= []).push(b));
+    } catch { /* sem servidor: mostra o expediente normal; o servidor confere na hora de marcar */ }
+    if (estado.dia && estado.hora && !horariosDoDia(estado.dia).includes(estado.hora)) estado.hora = null;
+    renderDias(); renderHorarios(); renderRodape();
+  }
+
   function horariosDoDia(d) {
     const exp = C.horarios[d.getDay()];
-    if (!exp) return [];
+    if (!exp || diaBloqueado(d)) return [];
+    const ocupados = (estado.ocupados[chaveDia(d)] || []).map((o) => [paraMin(o.hora), paraMin(o.hora) + Math.max(o.duracao, C.intervaloMinutos)]);
+    const bloqueios = (estado.bloqueios[chaveDia(d)] || []).map((b) => [paraMin(b.hora_inicio), paraMin(b.hora_fim)]);
     const dur = Math.max(duracaoTotal(), C.intervaloMinutos);
     const abre = paraMin(exp.abre), fecha = paraMin(exp.fecha);
     let minimo = -1;
@@ -66,6 +88,7 @@
     for (let t = abre; t + dur <= fecha; t += C.intervaloMinutos) {
       if (t < minimo) continue;
       if (pausas.some(([i, f]) => t >= i && t < f)) continue; // não começa durante a pausa
+      if ([...ocupados, ...bloqueios].some(([i, f]) => sobrepoe(t, t + dur, i, f))) continue;
       out.push(paraHHMM(t));
     }
     return out;
@@ -154,7 +177,7 @@
     $("#mesLabel").textContent = mes;
     $("#dias").innerHTML = dias.map((d, i) => {
       const livre = horariosDoDia(d).length > 0;
-      const fechado = !C.horarios[d.getDay()];
+      const fechado = !C.horarios[d.getDay()] || diaBloqueado(d);
       const sem = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
       const rot = i === 0 ? "hoje" : i === 1 ? "amanhã" : d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
       return `<button type="button" class="dia" role="option" data-dia="${d.toISOString()}"
@@ -224,7 +247,7 @@
       : "Escolha ao menos um serviço";
     $("#btnVoltar").style.visibility = estado.passo > 1 ? "visible" : "hidden";
     const av = $("#btnAvancar");
-    av.textContent = estado.passo === 4 ? "Confirmar agendamento" : "Continuar";
+    av.textContent = estado.passo === 4 ? (API.cliente || estado.modoConta === "entrar" ? "Confirmar agendamento" : "Criar conta e agendar") : "Continuar";
     av.disabled = !podeAvancar();
   }
 
@@ -240,6 +263,7 @@
   }
 
   function irPara(p) {
+    if (p === 2 && estado.passo !== 2) carregarDisponibilidade();
     estado.passo = p;
     renderPassos(); renderDias(); renderHorarios(); renderRodape();
     const topoCartao = $("#cartaoAgenda").getBoundingClientRect().top;
@@ -264,117 +288,144 @@
   new IntersectionObserver(([en]) => { agendaVisivel = en.isIntersecting; renderBarra(); }, { threshold: 0.15 })
     .observe($("#agendar"));
 
-  /* ------------------------------------------------------------ formulário */
-  const form = $("#formDados");
-  const tel = form.elements.whatsapp;
-  tel.addEventListener("input", () => {
-    const d = tel.value.replace(/\D/g, "").slice(0, 11);
-    let v = d;
-    if (d.length > 2) v = `(${d.slice(0, 2)}) ${d.slice(2)}`;
-    if (d.length > 7) v = `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}`;
-    tel.value = v;
-  });
-  form.addEventListener("submit", (e) => { e.preventDefault(); enviar(); });
-  form.addEventListener("input", (e) => { e.target.removeAttribute("aria-invalid"); $("#erroForm").textContent = ""; });
+  /* ------------------------------------------------------------ conta (passo 4) */
+  const formConta = $("#formConta");
+  API.mascaraTelefone(formConta.elements.whatsapp);
 
-  function validar() {
-    const f = form.elements;
+  function renderConta() {
+    const c = API.cliente;
+    $("#comConta").hidden = !c;
+    $("#semConta").hidden = !!c;
+    if (c) {
+      $("#quemNome").textContent = c.nome;
+      $("#quemContato").textContent = `${c.email} · ${API.fmtTelefone(c.whatsapp)}`;
+      const obsAntiga = formConta.elements.obs.value.trim();
+      if (obsAntiga && !$("#obs").value) $("#obs").value = obsAntiga;
+    }
+    const cad = estado.modoConta === "cadastro";
+    $$(".abas-conta [data-modo]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.modo === estado.modoConta)));
+    $$("[data-so]", formConta).forEach((el) => { el.hidden = el.dataset.so !== estado.modoConta; });
+    formConta.elements.senha.autocomplete = cad ? "new-password" : "current-password";
+    $("#linkConta").textContent = c ? "Minha conta" : "Entrar";
+  }
+
+  $$(".abas-conta [data-modo]").forEach((b) => b.addEventListener("click", () => {
+    estado.modoConta = b.dataset.modo;
+    $("#erroForm").textContent = "";
+    renderConta();
+  }));
+  $("#btnTrocarConta").addEventListener("click", async () => {
+    await API.sair();
+    estado.modoConta = "entrar";
+    renderConta(); renderRodape();
+  });
+  formConta.addEventListener("submit", (e) => { e.preventDefault(); enviar(); });
+  formConta.addEventListener("input", (e) => { e.target.removeAttribute("aria-invalid"); $("#erroForm").textContent = ""; });
+  document.addEventListener("ls:conta", () => { renderConta(); renderRodape(); });
+
+  function validarConta() {
+    const f = formConta.elements;
+    const cad = estado.modoConta === "cadastro";
     const erros = [];
-    if (f.nome.value.trim().length < 3) erros.push([f.nome, "Informe seu nome."]);
-    const dig = f.whatsapp.value.replace(/\D/g, "");
-    if (dig.length < 10) erros.push([f.whatsapp, "Informe um WhatsApp com DDD."]);
-    if (f.email.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.value.trim())) erros.push([f.email, "Esse e-mail parece incompleto."]);
+    if (cad && f.nome.value.trim().length < 3) erros.push([f.nome, "Informe seu nome."]);
+    if (cad && f.whatsapp.value.replace(/\D/g, "").length < 10) erros.push([f.whatsapp, "Informe um WhatsApp com DDD."]);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.value.trim())) erros.push([f.email, "Informe seu e-mail."]);
+    if (f.senha.value.length < (cad ? 6 : 1)) erros.push([f.senha, cad ? "A senha precisa ter pelo menos 6 caracteres." : "Informe sua senha."]);
     erros.forEach(([el]) => el.setAttribute("aria-invalid", "true"));
     if (erros.length) { $("#erroForm").textContent = erros[0][1]; erros[0][0].focus(); }
     return !erros.length;
   }
 
+  async function garantirConta() {
+    if (API.cliente) return true;
+    if (!validarConta()) return false;
+    const f = formConta.elements;
+    const dados = estado.modoConta === "cadastro"
+      ? { nome: f.nome.value, whatsapp: f.whatsapp.value, email: f.email.value, senha: f.senha.value }
+      : { email: f.email.value, senha: f.senha.value };
+    const r = await API.post(estado.modoConta === "cadastro" ? "/api/cadastro" : "/api/entrar", dados);
+    $("#obs").value = f.obs.value;
+    formConta.reset();
+    API.definirCliente(r.cliente);
+    return true;
+  }
+
   let ultimo = null;
 
   async function enviar() {
-    if (!validar()) return;
-    const f = form.elements;
-    const servicos = estado.sel.map((id) => porId[id]);
-    const dig = f.whatsapp.value.replace(/\D/g, "");
-    const dados = {
-      nome: f.nome.value.trim(),
-      whatsapp: f.whatsapp.value.trim(),
-      email: f.email.value.trim(),
-      obs: f.obs.value.trim(),
-      dia: new Date(estado.dia),
-      hora: estado.hora,
-      servicos,
-      duracao: duracaoTotal(),
-      preco: precoTotal(),
-    };
-    const diaTxt = dados.dia.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" });
-
     const btn = $("#btnAvancar");
     btn.disabled = true; btn.textContent = "Enviando…";
-
-    let teste = !C.emailDestino;
-    const robo = !!f._honey.value; // campo invisível preenchido = robô
-    if (!teste && !robo) {
-      try {
-        const resp = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(C.emailDestino)}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({
-            _subject: `Novo agendamento: ${dados.nome} — ${diaTxt} às ${dados.hora}`,
-            _template: "table",
-            _captcha: "false",
-            ...(dados.email ? { _replyto: dados.email } : {}),
-            "Cliente": dados.nome,
-            "WhatsApp": dados.whatsapp,
-            "Chamar no WhatsApp": `https://wa.me/55${dig}`,
-            "E-mail": dados.email || "não informado",
-            "Data": fmtDiaLongo(dados.dia),
-            "Horário": dados.hora,
-            "Serviços": servicos.map(nomeServico).join(" + "),
-            "Duração estimada": fmtDur(dados.duracao),
-            "Valor (a partir de)": brl(dados.preco),
-            "Observações": dados.obs || "—",
-          }),
-        });
-        const json = await resp.json().catch(() => ({}));
-        if (!resp.ok || String(json.success) !== "true") throw new Error(json.message || resp.status);
-      } catch (err) {
-        console.error(err);
-        $("#erroForm").textContent = C.whatsapp
-          ? "Não conseguimos enviar agora. Tente de novo ou chame no WhatsApp."
-          : "Não conseguimos enviar agora. Verifique sua conexão e tente de novo.";
-        renderRodape();
-        return;
-      }
+    try {
+      if (!(await garantirConta())) { renderRodape(); return; }
+      const r = await API.post("/api/agendamentos", {
+        servicos: estado.sel, data: chaveDia(estado.dia), hora: estado.hora, obs: $("#obs").value.trim(),
+      });
+      const a = r.agendamento;
+      const dados = {
+        nome: a.nome, whatsapp: API.fmtTelefone(a.whatsapp), email: a.email, obs: a.obs,
+        dia: new Date(estado.dia), hora: a.hora,
+        servicos: estado.sel.map((id) => porId[id]), duracao: a.duracao, preco: a.preco,
+      };
+      avisarLeo(dados);
+      ultimo = dados;
+      mostrarSucesso(dados);
+    } catch (err) {
+      $("#erroForm").textContent = err.message;
+      if (err.status === 409 && API.cliente) { estado.hora = null; carregarDisponibilidade(); irPara(3); }
+      renderRodape();
     }
-
-    ultimo = dados;
-    mostrarSucesso(dados, teste);
   }
 
-  function mostrarSucesso(d, teste) {
+  // Aviso por e-mail para o Léo (FormSubmit, já ativado no Hotmail dele).
+  // Se falhar, o agendamento continua valendo: ele aparece no painel.
+  function avisarLeo(d) {
+    if (!C.emailDestino) return;
+    const diaTxt = d.dia.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" });
+    fetch(`https://formsubmit.co/ajax/${encodeURIComponent(C.emailDestino)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        _subject: `Novo agendamento: ${d.nome} — ${diaTxt} às ${d.hora}`,
+        _template: "table",
+        _captcha: "false",
+        _replyto: d.email,
+        "Cliente": d.nome,
+        "WhatsApp": d.whatsapp,
+        "Chamar no WhatsApp": `https://wa.me/55${d.whatsapp.replace(/\D/g, "")}`,
+        "E-mail": d.email,
+        "Data": fmtDiaLongo(d.dia),
+        "Horário": d.hora,
+        "Serviços": d.servicos.map(nomeServico).join(" + "),
+        "Duração estimada": fmtDur(d.duracao),
+        "Valor (a partir de)": brl(d.preco),
+        "Observações": d.obs || "—",
+        "Confirmar no painel": `${location.origin}/admin.html`,
+      }),
+    }).catch(() => {});
+  }
+
+  function mostrarSucesso(d) {
     const primeiro = d.nome.split(" ")[0];
-    $("#sucessoTexto").textContent = `Obrigado, ${primeiro}! O Leonardo recebeu seu pedido e vai te esperar no horário abaixo. Se precisar remarcar, é só avisar.`;
+    $("#sucessoTexto").textContent = `Obrigado, ${primeiro}! O Leonardo recebeu seu pedido. Assim que ele confirmar, você recebe um e-mail. Um dia antes, mandamos um lembrete.`;
     $("#resumoFinal").innerHTML = `
       <div><span>Quando</span><b>${fmtDiaLongo(d.dia)} às ${d.hora}</b></div>
       <div><span>Serviços</span><b>${d.servicos.map(nomeServico).join("<br>")}</b></div>
       <div><span>Duração</span><b>≈ ${fmtDur(d.duracao)}</b></div>
       <div><span>Valor</span><b>a partir de ${brl(d.preco)}</b></div>`;
-    $("#modoTeste").hidden = !teste;
     const w = $("#btnWhats");
     if (C.whatsapp) {
       const msg = `Olá Leonardo! Acabei de agendar pelo site: ${d.servicos.map(nomeServico).join(" + ")} — ${fmtDiaLongo(d.dia)} às ${d.hora}. Nome: ${d.nome}.`;
       w.href = `https://wa.me/${C.whatsapp}?text=${encodeURIComponent(msg)}`;
       w.hidden = false;
     }
-    form.reset();
+    $("#obs").value = "";
     estado.sel = []; estado.dia = null; estado.hora = null;
     store.set("ls-sel", []);
     renderCatalogo(); renderBarra();
     irPara(5);
   }
 
-  $("#btnNovo").addEventListener("click", () => { atualizarTudo(); irPara(1); });
+  $("#btnNovo").addEventListener("click", () => { atualizarTudo(); irPara(1); carregarDisponibilidade(); });
 
   $("#btnIcs").addEventListener("click", () => {
     if (!ultimo) return;
@@ -422,4 +473,7 @@
 
   renderAbas();
   atualizarTudo();
+  renderConta();
+  carregarDisponibilidade();
+  API.carregarCliente();
 })();
