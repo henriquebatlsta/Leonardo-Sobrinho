@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Painel do salão · L.S Cabeleireiro</title>
+  <meta name="theme-color" content="#342611">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Painel%20L.S%22%2C%22start_url%22%3A%22%2Fadmin.html%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23DECEB4%22%2C%22theme_color%22%3A%22%23342611%22%7D">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Allura&family=Bebas+Neue&family=Kalam:wght@300;400&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="pagina-conta pagina-admin">
+
+  <header class="topo">
+    <a href="./" class="marca" aria-label="Ver o site">
+      <img src="assets/monograma.png" alt="" width="44" height="34">
+      <span><b>L.S</b> Painel</span>
+    </a>
+    <div class="topo-acoes">
+      <button type="button" class="btn btn-linha btn-sm" id="btnSair" hidden>Sair</button>
+    </div>
+  </header>
+
+  <main class="conta">
+    <p class="carregando" id="carregando">Carregando…</p>
+
+    <section class="cartao-conta" id="telaLogin" hidden>
+      <p class="sobretitulo">Só para o Léo</p>
+      <h1>Painel do salão</h1>
+      <form id="formLogin" novalidate>
+        <label>E-mail <input name="email" type="email" autocomplete="email" required></label>
+        <label>Senha <input name="senha" type="password" autocomplete="current-password" required></label>
+        <p class="erro" role="alert"></p>
+        <button type="submit" class="btn btn-escuro btn-largo">Entrar</button>
+      </form>
+    </section>
+
+    <section id="telaPainel" hidden>
+      <div class="abas-conta abas-painel" role="tablist">
+        <button type="button" role="tab" data-aba="agenda" aria-selected="true">Agenda</button>
+        <button type="button" role="tab" data-aba="bloqueios" aria-selected="false">Folgas e bloqueios</button>
+        <button type="button" role="tab" data-aba="clientes" aria-selected="false">Clientes</button>
+      </div>
+
+      <p class="aviso-email" id="avisoEmail" hidden>O envio automático de e-mails ainda não está ativo. Enquanto isso, use os botões de <b>WhatsApp</b> para avisar as clientes.</p>
+
+      <!-- AGENDA -->
+      <div data-painel="agenda">
+        <div class="resumo-agenda" id="resumoAgenda"></div>
+        <label class="check"><input type="checkbox" id="verDesmarcados"> Mostrar horários desmarcados</label>
+        <div id="agenda"></div>
+      </div>
+
+      <!-- BLOQUEIOS -->
+      <div data-painel="bloqueios" hidden>
+        <form class="cartao-conta" id="formBloqueio" novalidate>
+          <h2>Não vou atender</h2>
+          <p class="sub">Escolha o dia (ou vários dias seguidos). Ninguém consegue marcar horário nesse período.</p>
+          <div class="grade-campos">
+            <label>De <input type="date" name="de" required></label>
+            <label>Até <small>(opcional)</small><input type="date" name="ate"></label>
+          </div>
+          <label class="check"><input type="checkbox" name="diaTodo" checked> O dia todo</label>
+          <div class="grade-campos" id="horasBloqueio" hidden>
+            <label>Das <input type="time" name="horaInicio" step="1800"></label>
+            <label>Até as <input type="time" name="horaFim" step="1800"></label>
+          </div>
+          <label>Motivo <small>(só você vê)</small><input name="motivo" maxlength="200" placeholder="Ex.: viagem, curso, folga"></label>
+          <p class="erro" role="alert"></p>
+          <p class="ok" role="status"></p>
+          <button type="submit" class="btn btn-escuro">Bloquear</button>
+        </form>
+        <div class="cartao-conta">
+          <h2>Próximos bloqueios</h2>
+          <div id="listaBloqueios"></div>
+        </div>
+      </div>
+
+      <!-- CLIENTES -->
+      <div data-painel="clientes" hidden>
+        <div class="cartao-conta">
+          <h2>Clientes cadastradas <small id="totalClientes"></small></h2>
+          <input type="search" id="buscaCliente" placeholder="Buscar por nome, e-mail ou WhatsApp" aria-label="Buscar cliente">
+          <div id="listaClientes"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="api.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
