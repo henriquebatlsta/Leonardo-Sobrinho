@@ -307,8 +307,8 @@
     $$(".abas-conta [data-modo]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.modo === estado.modoConta)));
     $$("[data-so]", formConta).forEach((el) => { el.hidden = el.dataset.so !== estado.modoConta; });
     formConta.elements.senha.autocomplete = cad ? "new-password" : "current-password";
-    $("#linkConta").textContent = c?.admin ? "Painel" : c ? "Minha conta" : "Entrar";
-    $("#linkConta").href = c?.admin ? "admin.html" : "conta.html";
+    // O painel do Léo não aparece no menu público: ele entra direto em /admin.html.
+    $("#linkConta").textContent = c ? "Minha conta" : "Entrar";
   }
 
   $$(".abas-conta [data-modo]").forEach((b) => b.addEventListener("click", () => {
@@ -470,7 +470,106 @@
     R.instagramSalao && `<a class="rede" href="https://instagram.com/${R.instagramSalao}" target="_blank" rel="noopener">${ig}@${R.instagramSalao}</a>`,
     R.youtube && `<a class="rede" href="${R.youtube}" target="_blank" rel="noopener">${yt}Leonardo Sobrinho</a>`,
   ].filter(Boolean).join("");
-  $("#rodapeEndereco").textContent = C.endereco || "";
+  $("#rodapeEndereco").textContent = C.endereco || `${C.cidade || "Mauá"} · SP`;
+
+  /* ------------------------------------------------------------ onde estamos */
+  const NOMES_DIA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+  const fmtHora = (h) => h.replace(/^0/, "").replace(":00", "h").replace(":", "h");
+  (function renderOnde() {
+    // Segunda a domingo, juntando dias seguidos com o mesmo horário.
+    const ordem = [1, 2, 3, 4, 5, 6, 0];
+    const grupos = [];
+    ordem.forEach((d) => {
+      const h = C.horarios[d];
+      // Para a cliente vale até que horas dá para marcar (o último horário), não até quando o Léo fica.
+      const txt = h ? `${fmtHora(h.abre)} às ${fmtHora(h.ultimoHorario || h.fecha)}` : "Fechado";
+      const ult = grupos[grupos.length - 1];
+      if (ult && ult.txt === txt) ult.dias.push(d); else grupos.push({ txt, dias: [d] });
+    });
+    $("#horariosLista").innerHTML = grupos.map((g) => {
+      const dias = g.dias.length > 1 ? `${NOMES_DIA[g.dias[0]]} a ${NOMES_DIA[g.dias[g.dias.length - 1]]}` : NOMES_DIA[g.dias[0]];
+      return `<div><dt>${dias}</dt><dd>${g.txt}</dd></div>`;
+    }).join("");
+
+    const end = C.endereco;
+    const G = C.google || {};
+    if (end) { $("#ondeEndereco").textContent = end; $("#ondeEndereco").hidden = false; }
+    if (C.whatsapp) {
+      const w = $("#btnWhatsOnde");
+      w.href = `https://wa.me/${C.whatsapp}?text=${encodeURIComponent("Olá Leonardo! Vim pelo site e queria tirar uma dúvida.")}`;
+      w.hidden = false;
+      const tel = C.whatsapp.replace(/^55/, "");
+      $("#rodapeContato").innerHTML = `WhatsApp <a href="https://wa.me/${C.whatsapp}" target="_blank" rel="noopener">(${tel.slice(0, 2)}) ${tel.slice(2, -4)}-${tel.slice(-4)}</a>`;
+    }
+    const busca = end || "";
+    if (G.perfil || busca) {
+      const c = $("#btnComoChegar");
+      c.href = G.perfil || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(busca)}`;
+      c.hidden = false;
+    }
+    if (busca) {
+      $("#ondeMapa").innerHTML = `<iframe title="Mapa: como chegar ao L.S Cabeleireiro" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+        src="https://www.google.com/maps?q=${encodeURIComponent(busca)}&output=embed"></iframe>`;
+      $("#ondeMapa").hidden = false;
+    }
+
+    /* avaliações no Google */
+    if (G.avaliar || G.perfil) {
+      $("#avaliacoes").hidden = false;
+      const a = $("#btnAvaliar"), v = $("#btnVerAvaliacoes");
+      if (G.avaliar) a.href = G.avaliar; else a.hidden = true;
+      if (G.perfil) v.href = G.perfil; else v.hidden = true;
+    }
+
+    /* dados estruturados para o Google (cabeleireiro em Mauá) */
+    const ld = {
+      "@context": "https://schema.org", "@type": "HairSalon",
+      name: "L.S Cabeleireiro · Leonardo Sobrinho", url: "https://leonardosobrinho.com/",
+      image: "https://leonardosobrinho.com/assets/leo-atendendo.jpg",
+      ...(C.whatsapp ? { telephone: `+${C.whatsapp}` } : {}),
+      address: { "@type": "PostalAddress", ...(end ? { streetAddress: end } : {}), addressLocality: C.cidade || "Mauá", addressRegion: "SP", addressCountry: "BR" },
+      areaServed: C.cidade || "Mauá",
+      openingHoursSpecification: ordem.filter((d) => C.horarios[d]).map((d) => ({
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][d],
+        opens: C.horarios[d].abre, closes: C.horarios[d].fecha,
+      })),
+      sameAs: [R.instagramSalao && `https://instagram.com/${R.instagramSalao}`, R.instagramPessoal && `https://instagram.com/${R.instagramPessoal}`, R.youtube, G.perfil].filter(Boolean),
+    };
+    const sc = document.createElement("script");
+    sc.type = "application/ld+json";
+    sc.textContent = JSON.stringify(ld);
+    document.head.appendChild(sc);
+  })();
+
+  /* ------------------------------------------------------------ antes e depois */
+  (function renderGaleria() {
+    const fotos = (C.galeria || []).filter((f) => f.antes && f.depois);
+    if (!fotos.length) return;
+    $("#trabalhos").hidden = false;
+    const cats = C.categorias.filter((c) => fotos.some((f) => f.cat === c.id));
+    let aba = "todos";
+    const abas = [{ id: "todos", nome: "Todos" }, ...cats];
+    const esc = API.esc;
+    function render() {
+      $("#abasGaleria").innerHTML = abas.length > 2 ? abas.map((a) =>
+        `<button class="aba" role="tab" data-galeria="${a.id}" aria-selected="${a.id === aba}">${a.nome}</button>`).join("") : "";
+      $("#gradeGaleria").innerHTML = fotos.filter((f) => aba === "todos" || f.cat === aba).map((f) => `
+        <figure class="antes-depois">
+          <div class="par">
+            <div><img src="${esc(f.antes)}" alt="Antes${f.legenda ? `: ${esc(f.legenda)}` : ""}" loading="lazy"><span>Antes</span></div>
+            <div><img src="${esc(f.depois)}" alt="Depois${f.legenda ? `: ${esc(f.legenda)}` : ""}" loading="lazy"><span>Depois</span></div>
+          </div>
+          ${f.legenda ? `<figcaption>${esc(f.legenda)}</figcaption>` : ""}
+        </figure>`).join("");
+    }
+    $("#abasGaleria").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-galeria]");
+      if (b) { aba = b.dataset.galeria; render(); }
+    });
+    render();
+  })();
+  $$('[data-se="galeria"]').forEach((a) => { a.hidden = $("#trabalhos").hidden; });
   $("#ano").textContent = new Date().getFullYear();
 
   renderAbas();
