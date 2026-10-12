@@ -15,14 +15,29 @@ window.LS_CONFIG = {
   // Se preenchido, aparece o botão "Falar no WhatsApp" na confirmação.
   whatsapp: "5511957455442",
 
-  // Endereço do salão (aparece no rodapé e no e-mail). Opcional.
-  endereco: "",
+  // Endereço do salão, igual ao do perfil no Google (aparece em "Onde estamos",
+  // no mapa e nos e-mails). Ex.: "Rua Tal, 123 - Centro, Mauá - SP, 09310-000".
+  endereco: "R. Maria Marcolina de Jesus, 177 - Jardim Zaira, Mauá - SP, 09321-445",
+  cidade: "Mauá",
+
+  // Perfil do salão no Google (Google Meu Negócio).
+  google: {
+    // Link do perfil no Google Maps (botão "Como chegar" e "Ver avaliações").
+    perfil: "https://www.google.com/maps?cid=4331522419672295005",
+    // Link para deixar avaliação (no perfil: "Pedir avaliações" → copiar link).
+    avaliar: "https://g.page/r/CV0mNfmwqBw8ECE/review",
+  },
 
   redes: {
     instagramPessoal: "sobrinho.leonardo",
-    instagramSalao: "lscabeleireiro",
-    youtube: "https://www.youtube.com/results?search_query=leonardo+sobrinho+cabeleireiro",
+    instagramSalao: "ls.cabeleireiro",
+    youtube: "https://www.youtube.com/@LeonardoSobrinho",
   },
+
+  // Antes e depois. Coloque as fotos em public/assets/galeria/ e liste aqui.
+  // cat: "alisamentos", "coloracao", "tratamentos" ou "cortes" (as mesmas categorias do catálogo).
+  // Ex.: { cat: "alisamentos", antes: "assets/galeria/prog-1-antes.jpg", depois: "assets/galeria/prog-1-depois.jpg", legenda: "Progressiva sem formol" },
+  galeria: [],
 
   // Funcionamento. Dias: 0=domingo, 1=segunda ... 6=sábado.
   // null = fechado. Horários no formato "HH:MM".

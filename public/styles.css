@@ -334,6 +334,42 @@ textarea { resize: vertical; }
 .rede:hover { background: var(--escuro); }
 .rede svg { width: 20px; height: 20px; }
 
+/* ---------- Seções novas: antes e depois, avaliações, onde estamos ---------- */
+.secao-cab { text-align: center; max-width: 40rem; margin: 0 auto 2rem; }
+.secao-cab h2 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 500; text-transform: uppercase; }
+.secao-cab p:not(.sobretitulo) { color: var(--texto-suave); margin: .8rem 0 0; }
+.acoes-centro { justify-content: center; }
+
+.galeria { padding: 5rem var(--gutter); max-width: 1180px; margin: 0 auto; }
+.galeria .abas { margin-bottom: 1.6rem; }
+.grade-galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.2rem; }
+.antes-depois { margin: 0; background: var(--papel); border-radius: var(--raio); padding: .6rem; box-shadow: var(--sombra); }
+.antes-depois .par { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+.antes-depois .par div { position: relative; }
+.antes-depois img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; }
+.antes-depois span {
+  position: absolute; left: .5rem; bottom: .5rem; background: rgba(52, 38, 17, .85); color: var(--creme-claro);
+  font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; padding: .2rem .6rem; border-radius: 999px;
+}
+.antes-depois figcaption { text-align: center; font-weight: 600; color: var(--cafe); font-size: .9rem; padding: .6rem .4rem .2rem; }
+
+.avaliacoes { padding: 4.5rem var(--gutter); background: var(--creme-claro); }
+
+.onde {
+  display: grid; grid-template-columns: 1fr 1.1fr; gap: clamp(2rem, 5vw, 4rem); align-items: center;
+  padding: 5rem var(--gutter); max-width: 1180px; margin: 0 auto;
+}
+.onde h2 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 500; text-transform: uppercase; }
+.onde h2 span { font-family: var(--f-mao); font-style: italic; font-weight: 300; text-transform: none; color: var(--oliva); font-size: .55em; }
+.onde h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--oliva); margin: 1.6rem 0 .6rem; }
+.onde-endereco { font-size: 1.05rem; color: var(--tinta); margin: 1rem 0 0; }
+.horarios-lista { margin: 0 0 1.6rem; display: grid; gap: .3rem; max-width: 22rem; }
+.horarios-lista div { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px dashed rgba(94, 76, 46, .25); padding: .3rem 0; }
+.horarios-lista dt { font-weight: 500; }
+.horarios-lista dd { margin: 0; color: var(--texto-suave); }
+.onde-mapa iframe { width: 100%; aspect-ratio: 4 / 3; border: 0; border-radius: var(--raio); box-shadow: var(--sombra); background: var(--creme-claro); }
+.rodape a { color: inherit; }
+
 /* ---------- Rodapé ---------- */
 .rodape {
   position: relative; text-align: center; padding: 3.5rem var(--gutter) calc(2rem + env(safe-area-inset-bottom));
@@ -523,6 +559,8 @@ select { font: inherit; }
   .sobre { grid-template-columns: 1fr; text-align: center; padding-top: 4rem; }
   .sobre-foto img { max-width: 340px; margin: 0 auto; }
   .redes { justify-content: center; }
+  .onde { grid-template-columns: 1fr; padding-top: 3.5rem; }
+  .horarios-lista { max-width: none; }
 }
 @media (max-width: 520px) {
   .marca span { font-size: 1.2rem; }

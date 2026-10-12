@@ -3,8 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>L.S Cabeleireiro · Agende seu horário</title>
-  <meta name="description" content="Agende seu horário com Leonardo Sobrinho — cortes, tratamentos, alisamentos e coloração.">
+  <title>Cabeleireiro em Mauá · Leonardo Sobrinho | L.S Cabeleireiro</title>
+  <meta name="description" content="Cabeleireiro em Mauá (SP): Leonardo Sobrinho, do L.S Cabeleireiro. Progressiva, selagem, botox, coloração, tratamentos e cortes. Agende online em menos de um minuto.">
+  <link rel="canonical" href="https://leonardosobrinho.com/">
+  <meta property="og:title" content="Cabeleireiro em Mauá · Leonardo Sobrinho">
+  <meta property="og:description" content="Progressiva, coloração, tratamentos e cortes em Mauá. Agende online.">
+  <meta property="og:image" content="https://leonardosobrinho.com/assets/leo-atendendo.jpg">
+  <meta property="og:locale" content="pt_BR">
   <meta name="theme-color" content="#342611">
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/monograma.png">
@@ -27,7 +32,9 @@
     </a>
     <nav class="menu" aria-label="Seções">
       <a href="#servicos">Serviços</a>
+      <a href="#trabalhos" data-se="galeria">Trabalhos</a>
       <a href="#sobre">Sobre</a>
+      <a href="#onde">Onde estamos</a>
     </nav>
     <div class="topo-acoes">
       <a href="conta.html" class="link-conta" id="linkConta">Entrar</a>
@@ -40,10 +47,10 @@
     <section class="hero" id="inicio">
       <img class="hero-deco" src="assets/moldura-ferramentas.png" alt="" aria-hidden="true">
       <div class="hero-texto">
-        <p class="sobretitulo">Cabeleireiro · Resenhas · Dicas</p>
+        <p class="sobretitulo">Cabeleireiro em Mauá · Resenhas · Dicas</p>
         <h1>Leonardo<br>Sobrinho</h1>
         <p class="manuscrito">Cortes | Tratamentos | Coloração</p>
-        <p class="lead">Escolha os serviços, o dia e o horário. Em menos de um minuto seu horário está reservado.</p>
+        <p class="lead">Cabeleireiro em Mauá especializado em alisamentos, coloração e tratamentos. Escolha os serviços, o dia e o horário: em menos de um minuto seu horário está reservado.</p>
         <div class="acoes">
           <a href="#agendar" class="btn btn-escuro">Agendar horário <span aria-hidden="true">→</span></a>
           <a href="#servicos" class="btn btn-linha">Ver serviços e preços</a>
@@ -197,11 +204,51 @@
         <div class="redes" id="redes"></div>
       </div>
     </section>
+
+    <!-- ANTES E DEPOIS (aparece quando houver fotos em config.js → galeria) -->
+    <section class="galeria" id="trabalhos" hidden>
+      <div class="secao-cab">
+        <p class="sobretitulo">Trabalhos</p>
+        <h2>Antes e depois</h2>
+      </div>
+      <div class="abas" role="tablist" id="abasGaleria"></div>
+      <div class="grade-galeria" id="gradeGaleria"></div>
+    </section>
+
+    <!-- AVALIAÇÕES -->
+    <section class="avaliacoes" id="avaliacoes" hidden>
+      <div class="secao-cab">
+        <p class="sobretitulo">Avaliações</p>
+        <h2>O que as clientes dizem</h2>
+        <p>Já foi atendida pelo Léo? Sua avaliação no Google ajuda outras pessoas de Mauá a encontrarem o salão.</p>
+      </div>
+      <div class="acoes acoes-centro">
+        <a class="btn btn-escuro" id="btnAvaliar" target="_blank" rel="noopener">★ Avalie no Google</a>
+        <a class="btn btn-linha" id="btnVerAvaliacoes" target="_blank" rel="noopener">Ver avaliações</a>
+      </div>
+    </section>
+
+    <!-- ONDE ESTAMOS -->
+    <section class="onde" id="onde">
+      <div class="onde-info">
+        <p class="sobretitulo">Onde estamos</p>
+        <h2>L.S Cabeleireiro<br><span>Mauá · SP</span></h2>
+        <p class="onde-endereco" id="ondeEndereco" hidden></p>
+        <h3>Horário de atendimento</h3>
+        <dl class="horarios-lista" id="horariosLista"></dl>
+        <div class="acoes">
+          <a class="btn btn-escuro" id="btnWhatsOnde" target="_blank" rel="noopener" hidden>Chamar no WhatsApp</a>
+          <a class="btn btn-linha" id="btnComoChegar" target="_blank" rel="noopener" hidden>Como chegar</a>
+        </div>
+      </div>
+      <div class="onde-mapa" id="ondeMapa" hidden></div>
+    </section>
   </main>
 
   <footer class="rodape">
     <img src="assets/logo-claro.png" alt="L.S Cabeleireiro" class="rodape-logo" width="900" height="714" loading="lazy">
     <p id="rodapeEndereco"></p>
+    <p id="rodapeContato"></p>
     <p class="rodape-pe">© <span id="ano"></span> L.S Cabeleireiro · Leonardo Sobrinho</p>
   </footer>
 
