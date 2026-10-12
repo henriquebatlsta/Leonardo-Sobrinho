@@ -25,7 +25,7 @@ window.LS_CONFIG = {
     // Link do perfil no Google Maps (botão "Como chegar" e "Ver avaliações").
     perfil: "https://www.google.com/maps?cid=4331522419672295005",
     // Link para deixar avaliação (no perfil: "Pedir avaliações" → copiar link).
-    avaliar: "",
+    avaliar: "https://g.page/r/CV0mNfmwqBw8ECE/review",
   },
 
   redes: {
