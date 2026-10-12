@@ -17,13 +17,13 @@ window.LS_CONFIG = {
 
   // Endereço do salão, igual ao do perfil no Google (aparece em "Onde estamos",
   // no mapa e nos e-mails). Ex.: "Rua Tal, 123 - Centro, Mauá - SP, 09310-000".
-  endereco: "",
+  endereco: "R. Maria Marcolina de Jesus, 177 - Jardim Zaira, Mauá - SP, 09321-445",
   cidade: "Mauá",
 
   // Perfil do salão no Google (Google Meu Negócio).
   google: {
     // Link do perfil no Google Maps (botão "Como chegar" e "Ver avaliações").
-    perfil: "",
+    perfil: "https://www.google.com/maps?cid=4331522419672295005",
     // Link para deixar avaliação (no perfil: "Pedir avaliações" → copiar link).
     avaliar: "",
   },
