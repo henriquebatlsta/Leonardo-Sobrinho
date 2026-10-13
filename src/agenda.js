@@ -31,13 +31,19 @@ export const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currenc
 
 const sobrepoe = (a1, a2, b1, b2) => a1 < b2 && b1 < a2;
 
+/** Horário do dia: o que o Léo abriu de exceção (aberturas) ou o normal da semana. */
+export function expediente(data, abertura) {
+  if (abertura) return { abre: abertura.abre, ultimoHorario: abertura.ultimo, fecha: abertura.fecha };
+  return C.horarios[diaDaSemana(data)];
+}
+
 /**
  * Diz por que um horário não pode ser marcado, ou null se está livre.
  * `ocupados` são os agendamentos ativos do dia ({hora, duracao}) e
  * `bloqueios` os bloqueios do dia ({hora_inicio, hora_fim}).
  */
-export function motivoIndisponivel({ data, hora, duracao, ocupados, bloqueios }) {
-  const exp = C.horarios[diaDaSemana(data)];
+export function motivoIndisponivel({ data, hora, duracao, ocupados, bloqueios, abertura }) {
+  const exp = expediente(data, abertura);
   if (!exp) return "O salão não abre nesse dia.";
   const agora = agoraBrasilia();
   if (data < agora.data || data > somaDias(agora.data, C.diasParaFrente - 1)) return "Essa data não está aberta para agendamento.";

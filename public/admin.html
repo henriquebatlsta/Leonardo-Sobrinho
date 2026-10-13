@@ -51,6 +51,7 @@
       <!-- AGENDA -->
       <div data-painel="agenda">
         <section class="alerta-lembrete" id="alertaLembrete" hidden aria-live="polite"></section>
+        <button type="button" class="btn btn-escuro btn-agendar-cliente" id="btnAgendarCliente">+ Agendar para cliente</button>
         <div class="resumo-agenda" id="resumoAgenda"></div>
         <label class="check"><input type="checkbox" id="verDesmarcados"> Mostrar horários desmarcados</label>
         <div id="agenda"></div>
@@ -78,6 +79,22 @@
         <div class="cartao-conta">
           <h2>Próximos bloqueios</h2>
           <div id="listaBloqueios"></div>
+        </div>
+        <form class="cartao-conta" id="formAbertura" novalidate>
+          <h2>Vou atender num dia fechado</h2>
+          <p class="sub">Para abrir um domingo (ou outro dia fechado). As clientes passam a conseguir marcar nesse dia.</p>
+          <div class="grade-campos">
+            <label>Dia <input type="date" name="data" required></label>
+            <label>A partir das <input type="time" name="abre" step="1800" value="09:00"></label>
+            <label>Último horário <input type="time" name="ultimo" step="1800" value="18:00"></label>
+          </div>
+          <p class="erro" role="alert"></p>
+          <p class="ok" role="status"></p>
+          <button type="submit" class="btn btn-escuro">Abrir o dia</button>
+        </form>
+        <div class="cartao-conta">
+          <h2>Dias extras abertos</h2>
+          <div id="listaAberturas"></div>
         </div>
       </div>
 
@@ -139,6 +156,50 @@
         <button type="submit" class="btn btn-escuro" value="salvar" id="btnSalvarCliente">Cadastrar</button>
         <a class="btn btn-escuro" id="btnEnviarAcesso" target="_blank" rel="noopener" hidden>Enviar acesso no WhatsApp</a>
         <button type="submit" class="link" value="fechar" formnovalidate id="btnFecharCliente">Voltar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- O Léo marca um horário pela cliente (e cadastra, se ela não tiver conta) -->
+  <dialog class="janela" id="janelaAgendar" aria-labelledby="tituloAgendar">
+    <form method="dialog" id="formAgendar" novalidate>
+      <h2 id="tituloAgendar">Agendar para cliente</h2>
+      <div class="passo-agendar">
+        <fieldset class="bloco-agendar">
+          <legend>Cliente</legend>
+          <div class="escolha-cliente">
+            <input type="search" name="busca" placeholder="Buscar por nome ou WhatsApp" aria-label="Buscar cliente" autocomplete="off">
+            <select name="clienteId" size="4" aria-label="Clientes cadastradas"></select>
+            <button type="button" class="link" id="btnClienteNova">+ Cliente sem cadastro</button>
+          </div>
+          <div class="campos-cliente nova-cliente" hidden>
+            <label>Nome completo <input name="nome" autocomplete="off"></label>
+            <label>WhatsApp <input name="whatsapp" type="tel" inputmode="tel" placeholder="(11) 99999-9999"></label>
+            <label>E-mail <small>(é o login dela)</small><input name="email" type="email" autocomplete="off"></label>
+            <label>Senha de acesso <small>(pode trocar)</small>
+              <span class="linha-senha"><input name="senha" autocomplete="off"><button type="button" class="link" id="btnOutraSenha2">Gerar outra</button></span>
+            </label>
+            <button type="button" class="link" id="btnClienteLista">← Escolher cliente cadastrada</button>
+          </div>
+        </fieldset>
+        <fieldset class="bloco-agendar">
+          <legend>Serviços</legend>
+          <div class="lista-servicos" id="servicosAgendar"></div>
+        </fieldset>
+        <div class="grade-campos">
+          <label>Dia <input type="date" name="data" required></label>
+          <label>Horário <input type="time" name="hora" step="1800" value="09:00" required></label>
+        </div>
+        <label>Observação <small>(opcional)</small><input name="obs" maxlength="300"></label>
+      </div>
+      <label class="msg-agendar" hidden>Mensagem para a cliente <small>(pode editar antes de enviar)</small>
+        <textarea name="mensagem" rows="9"></textarea>
+      </label>
+      <p class="erro" role="alert"></p>
+      <div class="acoes-janela">
+        <button type="submit" class="btn btn-escuro" value="salvar" id="btnSalvarAgendar">Agendar</button>
+        <a class="btn btn-escuro" id="btnEnviarAgendar" target="_blank" rel="noopener" hidden>Enviar no WhatsApp</a>
+        <button type="submit" class="link" value="fechar" formnovalidate id="btnFecharAgendar">Voltar</button>
       </div>
     </form>
   </dialog>
