@@ -251,7 +251,11 @@ button { font: inherit; cursor: pointer; }
 }
 .chip:hover { border-color: var(--cafe); }
 
-.mes { font-family: var(--f-marca); letter-spacing: .1em; color: var(--oliva); font-size: 1.1rem; margin-bottom: .5rem; }
+.mes { font-family: var(--f-marca); letter-spacing: .1em; color: var(--oliva); font-size: 1.1rem; min-width: 11rem; text-align: center; }
+.mes-nav { display: flex; align-items: center; gap: .6rem; margin-bottom: .6rem; }
+.mes-seta { width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid rgba(94, 76, 46, .3); background: #fff; color: var(--escuro); font-size: 1.3rem; line-height: 1; cursor: pointer; }
+.mes-seta:hover:not(:disabled) { border-color: var(--cafe); }
+.mes-seta:disabled { opacity: .3; cursor: not-allowed; }
 .dias {
   display: grid; grid-auto-flow: column; grid-auto-columns: 74px; gap: .5rem;
   overflow-x: auto; padding: .2rem .1rem 1rem; scroll-snap-type: x mandatory;

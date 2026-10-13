@@ -16,6 +16,7 @@
   const estado = {
     sel: (store.get("ls-sel") || []).filter((id) => porId[id]),
     dia: null,     // Date (00:00)
+    mes: null,     // mês mostrado na escolha do dia (ano * 12 + mês)
     hora: null,    // "HH:MM"
     passo: 1,
     aba: "todos",
@@ -166,17 +167,27 @@
       .map((s) => `<button type="button" class="chip" data-toggle="${s.id}">+ ${nomeServico(s)}</button>`).join("");
   }
 
-  function renderDias() {
+  // A agenda abre muitos meses à frente: mostra um mês por vez, com setas.
+  const chaveMes = (d) => d.getFullYear() * 12 + d.getMonth();
+  function diasAbertos() {
     const base = hoje0();
-    const dias = [];
-    for (let i = 0; i < C.diasParaFrente; i++) {
-      const d = new Date(base); d.setDate(base.getDate() + i);
-      dias.push(d);
+    return Array.from({ length: C.diasParaFrente }, (_, i) => { const d = new Date(base); d.setDate(base.getDate() + i); return d; });
+  }
+
+  function renderDias() {
+    const todos = diasAbertos();
+    const meses = [...new Set(todos.map(chaveMes))];
+    if (estado.mes == null || !meses.includes(estado.mes)) {
+      const ref = estado.dia || todos.find((d) => horariosDoDia(d).length) || todos[0];
+      estado.mes = chaveMes(ref);
     }
-    const ref = estado.dia || dias.find((d) => horariosDoDia(d).length) || base;
-    const mes = ref.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-    $("#mesLabel").textContent = mes;
-    $("#dias").innerHTML = dias.map((d, i) => {
+    $("#mesLabel").textContent = new Date(Math.floor(estado.mes / 12), estado.mes % 12, 1)
+      .toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    $("#mesAnt").disabled = estado.mes === meses[0];
+    $("#mesProx").disabled = estado.mes === meses[meses.length - 1];
+    const dias = todos.filter((d) => chaveMes(d) === estado.mes);
+    $("#dias").innerHTML = dias.map((d) => {
+      const i = Math.round((d - todos[0]) / 864e5);
       const livre = horariosDoDia(d).length > 0;
       const fechado = !C.horarios[d.getDay()] || diaBloqueado(d);
       const sem = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
@@ -187,6 +198,12 @@
         <small>${sem}</small><b>${d.getDate()}</b><span>${fechado ? "fechado" : rot}</span></button>`;
     }).join("");
   }
+
+  [["#mesAnt", -1], ["#mesProx", 1]].forEach(([sel, passo]) => $(sel).addEventListener("click", () => {
+    estado.mes += passo;
+    renderDias();
+    $("#dias").scrollLeft = 0;
+  }));
 
   $("#dias").addEventListener("click", (e) => {
     const b = e.target.closest("[data-dia]");
