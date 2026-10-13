@@ -77,6 +77,7 @@
     $("#avisoEmail").hidden = dados.emailAtivo;
     renderAgenda();
     renderBloqueios();
+    renderAberturas();
   }
 
   function renderAgenda() {
@@ -95,15 +96,17 @@
 
     const bloqDia = {};
     dados.bloqueios.forEach((b) => (bloqDia[b.data] ||= []).push(b));
-    const dias = [...new Set([...lista.map((a) => a.data), ...Object.keys(bloqDia)])].sort();
+    const abDia = Object.fromEntries((dados.aberturas || []).map((a) => [a.data, a]));
+    const dias = [...new Set([...lista.map((a) => a.data), ...Object.keys(bloqDia), ...Object.keys(abDia)])].sort();
     if (!dias.length) { $("#agenda").innerHTML = `<p class="vazio">Nenhum horário marcado daqui para frente.</p>`; return; }
 
     $("#agenda").innerHTML = dias.map((d) => {
       const rot = d === dados.hoje ? "Hoje · " : "";
       const bl = (bloqDia[d] || []).map((b) =>
         `<p class="faixa-bloqueio">Bloqueado ${b.hora_inicio ? `das ${b.hora_inicio} às ${b.hora_fim}` : "o dia todo"}${b.motivo ? ` · ${esc(b.motivo)}` : ""}</p>`).join("");
+      const ab = abDia[d] ? `<p class="faixa-abertura">Dia extra aberto · das ${abDia[d].abre}, último horário ${abDia[d].ultimo}</p>` : "";
       const itens = lista.filter((a) => a.data === d).map(cardAgendamento).join("");
-      return `<section class="dia-agenda"><h2>${rot}${esc(API.fmtData(d))}</h2>${bl}${itens}</section>`;
+      return `<section class="dia-agenda"><h2>${rot}${esc(API.fmtData(d))}</h2>${ab}${bl}${itens}</section>`;
     }).join("");
   }
 
@@ -378,6 +381,116 @@
     if (criada) $("#btnEnviarAcesso").href = wa(criada.whatsapp, fc.elements.mensagem.value);
   });
   $("#btnEnviarAcesso").addEventListener("click", () => setTimeout(() => jc.close(), 300));
+
+  /* ------------------------------------------------------------ dias extras abertos */
+  const fa = $("#formAbertura");
+  fa.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = fa.elements, erro = $(".erro", fa), ok = $(".ok", fa), btn = $("button[type=submit]", fa);
+    erro.textContent = ""; ok.textContent = "";
+    if (!f.data.value) { erro.textContent = "Escolha o dia."; return; }
+    btn.disabled = true;
+    try {
+      await API.post("/api/admin/aberturas", { data: f.data.value, abre: f.abre.value, ultimo: f.ultimo.value });
+      ok.textContent = `Dia aberto: ${API.fmtData(f.data.value)}. As clientes já conseguem marcar.`;
+      f.data.value = "";
+      await carregarAgenda();
+    } catch (err) { erro.textContent = err.message; } finally { btn.disabled = false; }
+  });
+  function renderAberturas() {
+    const l = dados.aberturas || [];
+    $("#listaAberturas").innerHTML = l.length ? l.map((a) => `
+      <div class="item-bloqueio">
+        <div><b>${esc(API.fmtData(a.data))}</b><small>das ${esc(a.abre)} · último horário ${esc(a.ultimo)}</small></div>
+        <button type="button" class="link" data-fechar-dia="${a.id}">Fechar de novo</button>
+      </div>`).join("") : `<p class="vazio">Nenhum dia extra aberto.</p>`;
+  }
+  $("#listaAberturas").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-fechar-dia]");
+    if (!b) return;
+    if (!confirm("Fechar esse dia de novo? As clientes não vão mais conseguir marcar nele (quem já marcou continua na agenda).")) return;
+    b.disabled = true;
+    try { await API.del(`/api/admin/aberturas/${b.dataset.fecharDia}`); await carregarAgenda(); toast("Dia fechado de novo."); }
+    catch (err) { toast(err.message); b.disabled = false; }
+  });
+
+  /* ------------------------------------------------------------ agendar para cliente */
+  const jg = $("#janelaAgendar"), fg = $("#formAgendar");
+  let modoNova = false;
+  API.mascaraTelefone(fg.elements.whatsapp);
+  $("#servicosAgendar").innerHTML = C.servicos.map((s) => `
+    <label class="check"><input type="checkbox" name="servico" value="${s.id}">
+      <span>${esc(s.nome)}${s.nota ? ` <small>(${esc(s.nota)})</small>` : ""} <small>· ${API.brl(s.preco)} · ${s.duracao >= 60 ? `${Math.floor(s.duracao / 60)}h${s.duracao % 60 ? String(s.duracao % 60).padStart(2, "0") : ""}` : `${s.duracao} min`}</small></span></label>`).join("");
+
+  function listarClientesAgendar() {
+    const q = fg.elements.busca.value.trim().toLowerCase();
+    const digitos = q.replace(/\D/g, "");
+    const l = (clientes || []).filter((c) => !q || c.nome.toLowerCase().includes(q) || (digitos && c.whatsapp.includes(digitos)));
+    fg.elements.clienteId.innerHTML = l.map((c) => `<option value="${c.id}">${esc(c.nome)} · ${esc(API.fmtTelefone(c.whatsapp))}</option>`).join("");
+    if (l.length === 1) fg.elements.clienteId.value = String(l[0].id);
+  }
+  function modoCliente(nova) {
+    modoNova = nova;
+    $(".escolha-cliente", fg).hidden = nova;
+    $(".nova-cliente", fg).hidden = !nova;
+    if (nova && !fg.elements.senha.value) fg.elements.senha.value = senhaNova();
+    (nova ? fg.elements.nome : fg.elements.busca).focus();
+  }
+  fg.elements.busca.addEventListener("input", listarClientesAgendar);
+  $("#btnClienteNova").addEventListener("click", () => modoCliente(true));
+  $("#btnClienteLista").addEventListener("click", () => modoCliente(false));
+  $("#btnOutraSenha2").addEventListener("click", () => { fg.elements.senha.value = senhaNova(); });
+
+  $("#btnAgendarCliente").addEventListener("click", async () => {
+    fg.reset();
+    fg.elements.data.value = dados.hoje;
+    $(".erro", fg).textContent = "";
+    $(".passo-agendar", fg).hidden = false;
+    $(".msg-agendar", fg).hidden = true;
+    $("#btnSalvarAgendar").hidden = false; $("#btnSalvarAgendar").disabled = false;
+    $("#btnEnviarAgendar").hidden = true;
+    $("#btnFecharAgendar").textContent = "Voltar";
+    $("#tituloAgendar").textContent = "Agendar para cliente";
+    if (!clientes) { try { clientes = (await API.get("/api/admin/clientes")).clientes; } catch { clientes = []; } }
+    listarClientesAgendar();
+    jg.showModal();
+    modoCliente(!clientes.length); // sem nenhuma cliente ainda: já abre o cadastro
+  });
+
+  fg.addEventListener("submit", async (e) => {
+    if (e.submitter?.value !== "salvar") return; // "Voltar" só fecha
+    e.preventDefault();
+    const f = fg.elements, erro = $(".erro", fg), btn = $("#btnSalvarAgendar");
+    erro.textContent = "";
+    const servicos = [...fg.querySelectorAll("input[name=servico]:checked")].map((x) => x.value);
+    if (!modoNova && !f.clienteId.value) { erro.textContent = "Escolha a cliente (ou cadastre uma nova)."; return; }
+    if (!servicos.length) { erro.textContent = "Escolha ao menos um serviço."; return; }
+    if (!f.data.value || !f.hora.value) { erro.textContent = "Escolha o dia e o horário."; return; }
+    const senha = f.senha.value.trim();
+    btn.disabled = true;
+    try {
+      const r = await API.post("/api/admin/agendamentos", {
+        servicos, data: f.data.value, hora: f.hora.value, obs: f.obs.value,
+        ...(modoNova ? { novaCliente: { nome: f.nome.value, whatsapp: f.whatsapp.value, email: f.email.value, senha } } : { clienteId: Number(f.clienteId.value) }),
+      });
+      if (r.novaCliente && clientes) { clientes.push(r.cliente); clientes.sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR")); renderClientes(); }
+      await carregarAgenda();
+      const a = r.agendamento;
+      let msg = msgConfirmado(a);
+      if (r.novaCliente) msg += `\n\nTambém fiz o seu cadastro no site, para você acompanhar seus horários:\n${location.origin}/conta.html\nE-mail: ${r.cliente.email}\nSenha: ${senha}`;
+      $("#tituloAgendar").textContent = r.novaCliente ? "Cliente cadastrada e horário marcado!" : "Horário marcado!";
+      $(".passo-agendar", fg).hidden = true;
+      $(".msg-agendar", fg).hidden = false;
+      f.mensagem.value = msg;
+      const link = $("#btnEnviarAgendar");
+      link.href = wa(a.whatsapp, msg);
+      f.mensagem.oninput = () => { link.href = wa(a.whatsapp, f.mensagem.value); };
+      link.hidden = false;
+      btn.hidden = true;
+      $("#btnFecharAgendar").textContent = "Fechar";
+    } catch (err) { erro.textContent = err.message; btn.disabled = false; }
+  });
+  $("#btnEnviarAgendar").addEventListener("click", () => setTimeout(() => jg.close(), 300));
 
   /* ------------------------------------------------------------ início */
   async function abrirPainel() {

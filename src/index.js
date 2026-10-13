@@ -2,7 +2,7 @@
 // As páginas (public/) são servidas direto pela Cloudflare; este Worker só
 // responde /api/* e /confirmar, e roda os lembretes automáticos (cron).
 import { C } from "./config.js";
-import { porId, nomeServico, motivoIndisponivel, motivoConflito, paraMin, agoraBrasilia, somaDias, dataValida, horaValida, fmtDataLonga } from "./agenda.js";
+import { porId, nomeServico, motivoIndisponivel, motivoConflito, paraMin, paraHHMM, agoraBrasilia, somaDias, dataValida, horaValida, fmtDataLonga } from "./agenda.js";
 import { hashSenha, conferirSenha, criarSessao, sessaoAtual, encerrarSessao, cookieSaida, tokenAleatorio, sha256, iguais } from "./auth.js";
 import { emailConfirmado, emailLembrete, emailDesmarcado, emailRedefinirSenha, emailParaLeo } from "./emails.js";
 
@@ -165,20 +165,22 @@ async function disponibilidade(env, url) {
   const hoje = agoraBrasilia().data;
   const de = dataValida(url.searchParams.get("de")) ? url.searchParams.get("de") : hoje;
   const ate = dataValida(url.searchParams.get("ate")) ? url.searchParams.get("ate") : somaDias(hoje, C.diasParaFrente);
-  const [oc, bl] = await env.DB.batch([
+  const [oc, bl, ab] = await env.DB.batch([
     env.DB.prepare("SELECT data, hora, duracao FROM agendamentos WHERE status != 'cancelado' AND data BETWEEN ? AND ?").bind(de, ate),
     env.DB.prepare("SELECT data, hora_inicio, hora_fim FROM bloqueios WHERE data BETWEEN ? AND ?").bind(de, ate),
+    env.DB.prepare("SELECT data, abre, ultimo, fecha FROM aberturas WHERE data BETWEEN ? AND ?").bind(de, ate),
   ]);
   // Só o necessário para pintar a agenda: nada de nomes de outras clientes.
-  return json({ ocupados: oc.results, bloqueios: bl.results });
+  return json({ ocupados: oc.results, bloqueios: bl.results, aberturas: ab.results });
 }
 
 async function dadosDoDia(env, data) {
-  const [oc, bl] = await env.DB.batch([
+  const [oc, bl, ab] = await env.DB.batch([
     env.DB.prepare("SELECT id, hora, duracao FROM agendamentos WHERE status != 'cancelado' AND data = ?").bind(data),
     env.DB.prepare("SELECT hora_inicio, hora_fim FROM bloqueios WHERE data = ?").bind(data),
+    env.DB.prepare("SELECT abre, ultimo, fecha FROM aberturas WHERE data = ?").bind(data),
   ]);
-  return { ocupados: oc.results, bloqueios: bl.results };
+  return { ocupados: oc.results, bloqueios: bl.results, abertura: ab.results[0] || null };
 }
 
 async function criarAgendamento(env, request) {
@@ -200,9 +202,9 @@ async function criarAgendamento(env, request) {
   const id = r.meta.last_row_id;
 
   // Duas pessoas podem ter apertado ao mesmo tempo: fica com quem chegou primeiro.
-  const { ocupados, bloqueios } = await dadosDoDia(env, b.data);
+  const { ocupados, bloqueios, abertura } = await dadosDoDia(env, b.data);
   const antes = ocupados.filter((o) => o.id < id);
-  if (motivoIndisponivel({ data: b.data, hora: b.hora, duracao, ocupados: antes, bloqueios })) {
+  if (motivoIndisponivel({ data: b.data, hora: b.hora, duracao, ocupados: antes, bloqueios, abertura })) {
     await env.DB.prepare("DELETE FROM agendamentos WHERE id = ?").bind(id).run();
     throw new Erro(409, "Esse horário acabou de ser reservado por outra pessoa.");
   }
@@ -282,12 +284,13 @@ async function adminAgenda(env, request, url) {
   const hoje = agoraBrasilia().data;
   const de = dataValida(url.searchParams.get("de")) ? url.searchParams.get("de") : hoje;
   const ate = dataValida(url.searchParams.get("ate")) ? url.searchParams.get("ate") : somaDias(de, C.diasParaFrente);
-  const [ag, bl] = await env.DB.batch([
+  const [ag, bl, ab] = await env.DB.batch([
     env.DB.prepare(`SELECT a.*, c.nome, c.email, c.whatsapp FROM agendamentos a JOIN clientes c ON c.id = a.cliente_id
       WHERE a.data BETWEEN ? AND ? ORDER BY a.data, a.hora`).bind(de, ate),
     env.DB.prepare("SELECT * FROM bloqueios WHERE data BETWEEN ? AND ? ORDER BY data, hora_inicio").bind(de, ate),
+    env.DB.prepare("SELECT * FROM aberturas WHERE data BETWEEN ? AND ? ORDER BY data").bind(de, ate),
   ]);
-  return json({ hoje, de, ate, agendamentos: ag.results.map(paraAdmin), bloqueios: bl.results, emailAtivo: !!(env.EMAIL && env.EMAIL_FROM), siteUrl: env.SITE_URL });
+  return json({ hoje, de, ate, agendamentos: ag.results.map(paraAdmin), bloqueios: bl.results, aberturas: ab.results, emailAtivo: !!(env.EMAIL && env.EMAIL_FROM), siteUrl: env.SITE_URL });
 }
 
 async function adminConfirmar(env, request, id) {
@@ -371,6 +374,64 @@ async function adminClientes(env, request) {
   return json({ clientes: results.map((c) => ({ ...clientePublico(c), criado_em: c.criado_em, total: c.total })) });
 }
 
+// O Léo abre um dia que normalmente fica fechado (ex.: um domingo).
+async function adminCriarAbertura(env, request) {
+  await exigirAdmin(env, request);
+  const b = await corpo(request);
+  if (!dataValida(b.data)) throw new Erro(400, "Escolha o dia.");
+  if (b.data < agoraBrasilia().data) throw new Erro(400, "Esse dia já passou.");
+  const abre = horaValida(b.abre) ? b.abre : "09:00";
+  const ultimo = horaValida(b.ultimo) ? b.ultimo : "18:00";
+  if (paraMin(ultimo) < paraMin(abre)) throw new Erro(400, "O último horário precisa ser depois da abertura.");
+  const fecha = paraHHMM(Math.min(paraMin(ultimo) + 180, 23 * 60 + 30)); // dá tempo de terminar um serviço longo
+  await env.DB.prepare(`INSERT INTO aberturas (data, abre, ultimo, fecha) VALUES (?, ?, ?, ?)
+    ON CONFLICT(data) DO UPDATE SET abre = excluded.abre, ultimo = excluded.ultimo, fecha = excluded.fecha`)
+    .bind(b.data, abre, ultimo, fecha).run();
+  // Abrir o dia também tira o bloqueio de dia inteiro, se houver.
+  await env.DB.prepare("DELETE FROM bloqueios WHERE data = ? AND hora_inicio = ''").bind(b.data).run();
+  return json({ ok: true }, 201);
+}
+
+async function adminRemoverAbertura(env, request, id) {
+  await exigirAdmin(env, request);
+  await env.DB.prepare("DELETE FROM aberturas WHERE id = ?").bind(id).run();
+  return json({ ok: true });
+}
+
+// O Léo marca um horário pela cliente (já confirmado). Se ela não tiver
+// cadastro, cria junto. Vale qualquer dia e hora, desde que não bata com
+// outra cliente: quem decide o expediente aqui é ele.
+async function adminCriarAgendamento(env, request) {
+  await exigirAdmin(env, request);
+  const b = await corpo(request);
+  const ids = Array.isArray(b.servicos) ? [...new Set(b.servicos)].filter((id) => porId[id]) : [];
+  if (!ids.length) throw new Erro(400, "Escolha ao menos um serviço.");
+  if (!dataValida(b.data) || !horaValida(b.hora)) throw new Erro(400, "Escolha o dia e o horário.");
+  if (b.data < agoraBrasilia().data) throw new Erro(400, "Esse dia já passou.");
+  const servicos = ids.map((id) => porId[id]);
+  const duracao = servicos.reduce((t, sv) => t + sv.duracao, 0);
+  const preco = servicos.reduce((t, sv) => t + sv.preco, 0);
+  // Só confere choque com outra cliente: os bloqueios são do próprio Léo.
+  const { ocupados } = await dadosDoDia(env, b.data);
+  if (motivoConflito({ hora: b.hora, duracao, ocupados, bloqueios: [] })) throw new Erro(409, "Esse horário bate com outra cliente.");
+
+  let cliente;
+  if (b.clienteId) {
+    cliente = await env.DB.prepare("SELECT * FROM clientes WHERE id = ?").bind(Number(b.clienteId)).first();
+    if (!cliente) throw new Erro(404, "Cliente não encontrada.");
+  } else {
+    cliente = await novoCliente(env, b.novaCliente || {}).catch((e) => {
+      throw e.status === 409 ? new Erro(409, "Já existe uma cliente com esse e-mail. Escolha ela na lista.") : e;
+    });
+  }
+  const r = await env.DB.prepare(
+    "INSERT INTO agendamentos (cliente_id, data, hora, duracao, servicos, preco, obs, status, token) VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmado', ?)"
+  ).bind(cliente.id, b.data, b.hora, duracao, JSON.stringify(servicos.map(nomeServico)), preco, texto(b.obs, 500), tokenAleatorio(16)).run();
+  const a = await agendamentoCompleto(env, r.meta.last_row_id);
+  const emailEnviado = await emailConfirmado(env, a);
+  return json({ agendamento: paraAdmin(a), cliente: { ...clientePublico(cliente), criado_em: cliente.criado_em, total: 1 }, novaCliente: !b.clienteId, emailEnviado }, 201);
+}
+
 // O Léo cadastra uma cliente (com e-mail e uma senha para mandar a ela).
 async function adminCriarCliente(env, request) {
   await exigirAdmin(env, request);
@@ -436,6 +497,9 @@ async function rotear(request, env) {
   if ((r = p.match(/^\/api\/admin\/bloqueios\/(\d+)$/)) && m === "DELETE") return adminRemoverBloqueio(env, request, Number(r[1]));
   if (p === "/api/admin/clientes" && m === "GET") return adminClientes(env, request);
   if (p === "/api/admin/clientes" && m === "POST") return adminCriarCliente(env, request);
+  if (p === "/api/admin/agendamentos" && m === "POST") return adminCriarAgendamento(env, request);
+  if (p === "/api/admin/aberturas" && m === "POST") return adminCriarAbertura(env, request);
+  if ((r = p.match(/^\/api\/admin\/aberturas\/(\d+)$/)) && m === "DELETE") return adminRemoverAbertura(env, request, Number(r[1]));
 
   if (p.startsWith("/api/")) throw new Erro(404, "Rota não encontrada.");
   return env.ASSETS.fetch(request);

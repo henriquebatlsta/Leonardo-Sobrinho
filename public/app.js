@@ -24,6 +24,7 @@
     // Horários já marcados e bloqueios do Léo, por dia ("AAAA-MM-DD").
     ocupados: {},
     bloqueios: {},
+    aberturas: {}, // dias normalmente fechados que o Léo abriu (ex.: um domingo)
   };
 
   /* ------------------------------------------------------------ splash */
@@ -64,16 +65,23 @@
   async function carregarDisponibilidade() {
     try {
       const r = await API.get("/api/disponibilidade");
-      estado.ocupados = {}; estado.bloqueios = {};
+      estado.ocupados = {}; estado.bloqueios = {}; estado.aberturas = {};
       r.ocupados.forEach((o) => (estado.ocupados[o.data] ||= []).push(o));
       r.bloqueios.forEach((b) => (estado.bloqueios[b.data] ||= []).push(b));
+      (r.aberturas || []).forEach((a) => { estado.aberturas[a.data] = a; });
     } catch { /* sem servidor: mostra o expediente normal; o servidor confere na hora de marcar */ }
     if (estado.dia && estado.hora && !horariosDoDia(estado.dia).includes(estado.hora)) estado.hora = null;
     renderDias(); renderHorarios(); renderRodape();
   }
 
+  // Mesma regra de src/agenda.js (expediente): a abertura do Léo vale mais que o normal da semana.
+  function expediente(d) {
+    const a = estado.aberturas[chaveDia(d)];
+    return a ? { abre: a.abre, ultimoHorario: a.ultimo, fecha: a.fecha } : C.horarios[d.getDay()];
+  }
+
   function horariosDoDia(d) {
-    const exp = C.horarios[d.getDay()];
+    const exp = expediente(d);
     if (!exp || diaBloqueado(d)) return [];
     const ocupados = (estado.ocupados[chaveDia(d)] || []).map((o) => [paraMin(o.hora), paraMin(o.hora) + Math.max(o.duracao, C.intervaloMinutos)]);
     const bloqueios = (estado.bloqueios[chaveDia(d)] || []).map((b) => [paraMin(b.hora_inicio), paraMin(b.hora_fim)]);
@@ -189,7 +197,7 @@
     $("#dias").innerHTML = dias.map((d) => {
       const i = Math.round((d - todos[0]) / 864e5);
       const livre = horariosDoDia(d).length > 0;
-      const fechado = !C.horarios[d.getDay()] || diaBloqueado(d);
+      const fechado = !expediente(d) || diaBloqueado(d);
       const sem = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
       const rot = i === 0 ? "hoje" : i === 1 ? "amanhã" : d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
       return `<button type="button" class="dia" role="option" data-dia="${d.toISOString()}"

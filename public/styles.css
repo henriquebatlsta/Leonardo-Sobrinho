@@ -527,7 +527,7 @@ select { font: inherit; }
 .janela::backdrop { background: rgba(42, 31, 15, .55); }
 .janela form { display: grid; gap: .9rem; min-width: 0; }
 .janela label { min-width: 0; }
-.janela input:not([type=radio]), .janela textarea { width: 100%; min-width: 0; }
+.janela input:not([type=radio]):not([type=checkbox]), .janela textarea { width: 100%; min-width: 0; }
 .janela h2 { margin: 0; font-size: 1.15rem; }
 .janela textarea { font-weight: 400; font-size: .95rem; }
 .janela .sub { margin: -.5rem 0 0; color: var(--texto-suave); font-size: .9rem; }
@@ -536,6 +536,18 @@ select { font: inherit; }
 .motivos .check { font-size: .95rem; color: var(--tinta); }
 .acoes-janela { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
 .dica-campo { font-size: .78rem; }
+.btn-agendar-cliente { width: 100%; margin-bottom: .8rem; }
+.faixa-abertura { margin: 0; background: #DDEFD9; color: #2E5E2A; border-radius: 12px; padding: .55rem .9rem; font-size: .82rem; font-weight: 600; }
+.bloco-agendar { border: 0; margin: 0; padding: 0; display: grid; gap: .5rem; min-width: 0; }
+.bloco-agendar legend { font-size: .85rem; font-weight: 600; color: var(--cafe); margin-bottom: .4rem; padding: 0; }
+.escolha-cliente { display: grid; gap: .5rem; }
+.escolha-cliente .link, .nova-cliente .link { justify-self: start; padding: .2rem 0; }
+.janela select { width: 100%; font: inherit; font-size: .95rem; border: 1.5px solid rgba(94, 76, 46, .25); border-radius: 12px; padding: .3rem; background: #fff; color: var(--tinta); }
+.janela select option { padding: .45rem .5rem; border-radius: 8px; }
+.lista-servicos { display: grid; gap: .45rem; max-height: 230px; overflow-y: auto; padding-right: .3rem; }
+.lista-servicos .check { align-items: flex-start; font-weight: 500; font-size: .9rem; color: var(--tinta); }
+.lista-servicos .check small { color: var(--texto-suave); font-weight: 400; }
+.passo-agendar { display: grid; gap: .9rem; }
 .cab-clientes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; margin-bottom: .6rem; }
 .cab-clientes h2 { margin: 0; }
 .campos-cliente { display: grid; gap: .8rem; }
