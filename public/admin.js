@@ -96,7 +96,7 @@
     const bloqDia = {};
     dados.bloqueios.forEach((b) => (bloqDia[b.data] ||= []).push(b));
     const dias = [...new Set([...lista.map((a) => a.data), ...Object.keys(bloqDia)])].sort();
-    if (!dias.length) { $("#agenda").innerHTML = `<p class="vazio">Nenhum horário marcado nos próximos 60 dias.</p>`; return; }
+    if (!dias.length) { $("#agenda").innerHTML = `<p class="vazio">Nenhum horário marcado daqui para frente.</p>`; return; }
 
     $("#agenda").innerHTML = dias.map((d) => {
       const rot = d === dados.hoje ? "Hoje · " : "";

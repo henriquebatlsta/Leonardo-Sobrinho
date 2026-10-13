@@ -281,7 +281,7 @@ async function adminAgenda(env, request, url) {
   await exigirAdmin(env, request);
   const hoje = agoraBrasilia().data;
   const de = dataValida(url.searchParams.get("de")) ? url.searchParams.get("de") : hoje;
-  const ate = dataValida(url.searchParams.get("ate")) ? url.searchParams.get("ate") : somaDias(de, 60);
+  const ate = dataValida(url.searchParams.get("ate")) ? url.searchParams.get("ate") : somaDias(de, C.diasParaFrente);
   const [ag, bl] = await env.DB.batch([
     env.DB.prepare(`SELECT a.*, c.nome, c.email, c.whatsapp FROM agendamentos a JOIN clientes c ON c.id = a.cliente_id
       WHERE a.data BETWEEN ? AND ? ORDER BY a.data, a.hora`).bind(de, ate),

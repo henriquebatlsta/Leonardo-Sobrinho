@@ -106,7 +106,11 @@
         <!-- Passo 2 -->
         <div class="passo" data-passo="2" hidden>
           <h3>Qual dia fica melhor?</h3>
-          <div class="mes" id="mesLabel"></div>
+          <div class="mes-nav">
+            <button type="button" class="mes-seta" id="mesAnt" aria-label="Mês anterior">‹</button>
+            <div class="mes" id="mesLabel" aria-live="polite"></div>
+            <button type="button" class="mes-seta" id="mesProx" aria-label="Próximo mês">›</button>
+          </div>
           <div class="dias" id="dias" role="listbox" aria-label="Escolha o dia"></div>
         </div>
 

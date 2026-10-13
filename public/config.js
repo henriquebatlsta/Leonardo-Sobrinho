@@ -45,16 +45,16 @@ window.LS_CONFIG = {
   // pode começar (opcional). fecha: até quando o Léo trabalha; o serviço
   // precisa terminar até lá. Ex.: às 18:00 cabe um serviço de até 3 horas.
   horarios: {
-    0: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
+    0: null,
     1: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
     2: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
     3: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
     4: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
     5: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
-    6: { abre: "09:00", fecha: "17:00" },
+    6: { abre: "09:00", ultimoHorario: "18:00", fecha: "21:00" },
   },
   intervaloMinutos: 30,          // de quanto em quanto tempo aparecem os horários
-  diasParaFrente: 30,            // até quantos dias à frente dá para agendar
+  diasParaFrente: 450,           // até quantos dias à frente dá para agendar (~15 meses: sempre passa de dezembro do ano que vem)
   antecedenciaMinimaHoras: 2,    // não deixa marcar "daqui a 10 minutos"
   pausas: [{ inicio: "12:00", fim: "13:00" }], // almoço etc.
 
@@ -67,24 +67,24 @@ window.LS_CONFIG = {
     { id: "cortes", nome: "Cortes" },
   ],
   servicos: [
-    { id: "hidratacao", cat: "tratamentos", nome: "Hidratação & Nutrição", preco: 70, duracao: 60,
+    { id: "hidratacao", cat: "tratamentos", nome: "Hidratação ou Nutrição", preco: 80, duracao: 120,
       desc: "Repõe água e nutrientes, devolvendo maciez, brilho e movimento aos fios." },
-    { id: "reconstrucao", cat: "tratamentos", nome: "Reconstrução", preco: 100, duracao: 75,
-      desc: "Repõe a massa capilar de fios enfraquecidos por química, calor ou descoloração." },
+    { id: "reconstrucao", cat: "tratamentos", nome: "Reconstrução ou Cauterização", preco: 100, duracao: 120,
+      desc: "Repõe a massa capilar e sela as cutículas de fios enfraquecidos por química, calor ou descoloração." },
+    { id: "cronograma", cat: "tratamentos", nome: "Cronograma Capilar", nota: "3 etapas", preco: 250, duracao: 120,
+      desc: "Hidratação, nutrição e reconstrução em 3 etapas. Agende a primeira; as próximas o Léo combina com você." },
     { id: "nano", cat: "tratamentos", nome: "Nanotecnologia Capilar", preco: 80, duracao: 75,
       desc: "Ativos de alta penetração que tratam a fibra por dentro e alinham os fios." },
-    { id: "ozonio", cat: "tratamentos", nome: "Ozonioterapia", nota: "por sessão", preco: 100, duracao: 45,
-      desc: "Cuidado para o couro cabeludo: equilibra oleosidade e fortalece a raiz." },
-    { id: "cauterizacao", cat: "tratamentos", nome: "Cauterização", preco: 100, duracao: 90,
-      desc: "Sela as cutículas e recupera fios porosos, elásticos e quebradiços." },
+    { id: "ozonio", cat: "tratamentos", nome: "Ozonioterapia", preco: 100, duracao: 120,
+      desc: "Tratamento com ozônio para o couro cabeludo: equilibra a oleosidade e fortalece a raiz." },
 
-    { id: "prog-com", cat: "alisamentos", nome: "Progressiva", nota: "com formol", preco: 180, duracao: 180,
+    { id: "prog-com", cat: "alisamentos", nome: "Progressiva", nota: "com formol", preco: 180, duracao: 240,
       desc: "Alisamento de longa duração, liso marcado e brilho intenso." },
-    { id: "prog-sem", cat: "alisamentos", nome: "Progressiva", nota: "sem formol", preco: 180, duracao: 180,
+    { id: "prog-sem", cat: "alisamentos", nome: "Progressiva", nota: "sem formol", preco: 180, duracao: 240,
       desc: "Redução de volume e frizz com fórmula livre de formol." },
-    { id: "selagem", cat: "alisamentos", nome: "Selagem", nota: "com ou sem formol", preco: 150, duracao: 150,
+    { id: "selagem", cat: "alisamentos", nome: "Selagem", nota: "com ou sem formol", preco: 180, duracao: 240,
       desc: "Alinha a fibra e controla o frizz mantendo o movimento natural." },
-    { id: "botox", cat: "alisamentos", nome: "Botox Capilar", preco: 130, duracao: 120,
+    { id: "botox", cat: "alisamentos", nome: "Botox Capilar", preco: 150, duracao: 180,
       desc: "Preenche a fibra, reduz o volume e deixa os fios disciplinados." },
 
     { id: "cor-tinta", cat: "coloracao", nome: "Coloração com sua tinta", preco: 100, duracao: 90,
@@ -92,9 +92,9 @@ window.LS_CONFIG = {
     { id: "mudanca-cor", cat: "coloracao", nome: "Mudança de cor", preco: 250, duracao: 240,
       desc: "Transformação completa de cor, com diagnóstico e cuidado da fibra." },
 
-    { id: "corte-fem", cat: "cortes", nome: "Corte Feminino", preco: 60, duracao: 60,
-      desc: "Corte pensado para o seu rosto, textura de fio e rotina." },
-    { id: "corte-escova", cat: "cortes", nome: "Corte com Escova", preco: 100, duracao: 90,
+    { id: "corte-fem", cat: "cortes", nome: "Corte", nota: "sem finalização", preco: 60, duracao: 60,
+      desc: "Lavagem + corte, pensado para o seu rosto, textura de fio e rotina." },
+    { id: "corte-escova", cat: "cortes", nome: "Corte com finalização", preco: 100, duracao: 120,
       desc: "Corte + escova modelada para você sair pronta do salão." },
   ],
 };
