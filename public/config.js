@@ -28,6 +28,9 @@ window.LS_CONFIG = {
     avaliar: "https://g.page/r/CV0mNfmwqBw8ECE/review",
   },
 
+  // Atalho do app Atalhos (iPhone) que abre o painel. Usado no link escondido /instalar.
+  atalhoIphone: "https://www.icloud.com/shortcuts/8479a940117342adbe65fe85cf87c371",
+
   redes: {
     instagramPessoal: "sobrinho.leonardo",
     instagramSalao: "ls.cabeleireiro",
