@@ -29,7 +29,7 @@ const DIAS_SESSAO = 60;
 
 export async function criarSessao(env, { clienteId = null, admin = false }) {
   const token = tokenAleatorio();
-  const dias = admin ? 7 : DIAS_SESSAO;
+  const dias = DIAS_SESSAO; // o Léo também fica logado 60 dias, para não ter de entrar toda semana
   const expira = new Date(Date.now() + dias * 86400000).toISOString();
   await env.DB.prepare("INSERT INTO sessoes (token_hash, cliente_id, admin, expira_em) VALUES (?, ?, ?, ?)")
     .bind(await sha256(token), clienteId, admin ? 1 : 0, expira).run();

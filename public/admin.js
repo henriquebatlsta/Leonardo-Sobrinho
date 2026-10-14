@@ -29,7 +29,12 @@
     try {
       await API.post("/api/admin/entrar", { email: f.elements.email.value, senha: f.elements.senha.value });
       f.reset();
-      await abrirPainel();
+      try { await abrirPainel(); }
+      catch (err) {
+        // A senha estava certa, mas o navegador não guardou o login (sem cadeado, aba anônima, cookies bloqueados).
+        if (err.status === 401) throw new Error("A senha está certa, mas este navegador não guardou o login. Abra pelo endereço https://leonardosobrinho.com/admin (com o cadeado) no Chrome ou no navegador do celular, fora de aba anônima.");
+        throw err;
+      }
     } catch (err) { erro.textContent = err.message; } finally { btn.disabled = false; }
   });
   $("#btnSair").addEventListener("click", async () => {
