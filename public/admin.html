@@ -7,7 +7,12 @@
   <meta name="theme-color" content="#342611">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" type="image/png" href="assets/favicon.png">
-  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Painel%20L.S%22%2C%22start_url%22%3A%22%2Fadmin.html%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23DECEB4%22%2C%22theme_color%22%3A%22%23342611%22%7D">
+  <link rel="manifest" href="painel.webmanifest">
+  <link rel="apple-touch-icon" href="assets/app-icone-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Painel L.S">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Allura&family=Bebas+Neue&family=Kalam:wght@300;400&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -27,6 +32,40 @@
 
   <main class="conta">
     <p class="carregando" id="carregando">Carregando…</p>
+
+    <!-- Instalar o painel na tela de início (aparece só pelo link /instalar, fora do app) -->
+    <section class="cartao-conta instalar" id="instalar" hidden>
+      <img src="assets/app-icone-180.png" alt="" width="72" height="72" class="instalar-icone">
+      <h1>Instalar o app do painel</h1>
+      <p class="sub">Fica um ícone na tela de início do celular, que abre direto no painel, sem precisar procurar o site.</p>
+      <button type="button" class="btn btn-escuro btn-largo" id="btnInstalar">Instalar aplicativo</button>
+
+      <div class="instalar-passos" id="passosIphone" hidden>
+        <p class="aviso-safari" id="avisoSafari" hidden>
+          <span>Você abriu por dentro de outro app (WhatsApp, Instagram…). No iPhone, só o <b>Safari</b> instala.
+          Toque em <b>Copiar link</b>, abra o <b>Safari</b> e cole na barra de endereço.</span>
+          <button type="button" class="btn btn-linha btn-sm" id="btnCopiarLink">Copiar link</button>
+        </p>
+        <ol>
+          <li>Toque no botão <b>Compartilhar</b>
+            <svg class="ico-compartilhar" viewBox="0 0 24 24" aria-label="ícone Compartilhar"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 11H6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            na barra do Safari (embaixo, no meio da tela).</li>
+          <li>Role a lista e toque em <b>Adicionar à Tela de Início</b> <span class="ico-mais" aria-hidden="true">⊞</span>.</li>
+          <li>Toque em <b>Adicionar</b>, no canto de cima.</li>
+          <li>Pronto: abra o painel pelo ícone <b>Painel L.S</b> e entre uma vez com o seu e-mail e senha.</li>
+        </ol>
+        <p class="sub dica-safari">Não achou “Adicionar à Tela de Início”? Você deve estar dentro do WhatsApp: toque no ícone da bússola (ou em “Abrir no Safari”) e repita os passos.</p>
+      </div>
+      <div class="instalar-passos" id="passosAndroid" hidden>
+        <ol>
+          <li>Toque nos <b>três pontinhos ⋮</b> no canto de cima do Chrome.</li>
+          <li>Toque em <b>Instalar app</b> (ou <b>Adicionar à tela inicial</b>).</li>
+          <li>Confirme em <b>Instalar</b>. Depois é só abrir pelo ícone <b>Painel L.S</b>.</li>
+        </ol>
+      </div>
+      <p class="sub" id="passosComputador" hidden>Abra este link no celular: <b>leonardosobrinho.com/instalar</b></p>
+      <div class="seta-safari" id="setaSafari" hidden aria-hidden="true">↓</div>
+    </section>
 
     <section class="cartao-conta" id="telaLogin" hidden>
       <p class="sobretitulo">Só para o Léo</p>

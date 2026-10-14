@@ -497,6 +497,36 @@
   });
   $("#btnEnviarAgendar").addEventListener("click", () => setTimeout(() => jg.close(), 300));
 
+  /* ------------------------------------------------------------ instalar na tela de início */
+  (function instalar() {
+    const noApp = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+    if (noApp || !/[?&]instalar\b/.test(location.search)) return;
+    const ua = navigator.userAgent;
+    const iphone = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    const android = /Android/.test(ua);
+    const dentroDeApp = /FBAN|FBAV|Instagram|WhatsApp|Line\/|GSA\//.test(ua) || (iphone && !/Safari\//.test(ua));
+    let pedido = null; // Android/Chrome: janela oficial de instalar
+    addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); pedido = e; });
+    addEventListener("appinstalled", () => { toast("App instalado! Abra pelo ícone Painel L.S."); $("#instalar").hidden = true; });
+    $("#instalar").hidden = false;
+    $("#btnInstalar").addEventListener("click", async () => {
+      if (pedido) { pedido.prompt(); await pedido.userChoice.catch(() => {}); pedido = null; return; }
+      if (iphone) {
+        $("#passosIphone").hidden = false;
+        $("#avisoSafari").hidden = !dentroDeApp;
+        $("#setaSafari").hidden = dentroDeApp || /iPad/.test(ua);
+      } else if (android) $("#passosAndroid").hidden = false;
+      else $("#passosComputador").hidden = false;
+      $("#btnInstalar").textContent = "Siga os passos abaixo";
+      $("#btnInstalar").disabled = true;
+    });
+    $("#btnCopiarLink").addEventListener("click", async () => {
+      const link = `${location.origin}/admin?instalar=1`;
+      try { await navigator.clipboard.writeText(link); toast("Link copiado! Agora abra o Safari e cole."); }
+      catch { prompt("Copie este link e cole no Safari:", link); }
+    });
+  })();
+
   /* ------------------------------------------------------------ início */
   async function abrirPainel() {
     await carregarAgenda();
