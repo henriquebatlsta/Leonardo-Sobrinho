@@ -514,10 +514,13 @@
     const meu = iphone ? $("#btnIphone") : android ? $("#btnAndroid") : null;
     if (meu) { meu.classList.replace("btn-linha", "btn-escuro"); meu.parentElement.prepend(meu); }
     if (!iphone && !android) $("#passosComputador").hidden = false;
+    // Com o atalho do iCloud configurado, o botão do iPhone abre ele (app Atalhos); senão, baixa o perfil.
+    if (C.atalhoIphone) $("#btnIphone").href = C.atalhoIphone;
     const mostrar = (id) => ["passosIphone", "passosAndroid"].forEach((x) => { $(`#${x}`).hidden = x !== id; });
 
     $("#btnIphone").addEventListener("click", (e) => {
-      if (dentroDeApp) { e.preventDefault(); $("#avisoSafari").hidden = false; return; }
+      // O link do iCloud abre de qualquer lugar; só o perfil precisa do Safari.
+      if (dentroDeApp && !C.atalhoIphone) { e.preventDefault(); $("#avisoSafari").hidden = false; return; }
       if (!iphone) { e.preventDefault(); toast("Abra este link no iPhone, pelo Safari."); }
       mostrar("passosIphone"); // o download do perfil segue pelo link
     });
