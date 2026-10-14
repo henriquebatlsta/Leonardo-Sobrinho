@@ -536,6 +536,20 @@ select { font: inherit; }
 .motivos .check { font-size: .95rem; color: var(--tinta); }
 .acoes-janela { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
 .dica-campo { font-size: .78rem; }
+/* Instalar o painel na tela de início */
+.instalar { text-align: center; margin-bottom: 1rem; }
+.instalar-icone { width: 72px; height: 72px; border-radius: 18px; margin: 0 auto .6rem; box-shadow: var(--sombra); }
+.instalar h1 { font-size: 1.35rem; margin: 0 0 .3rem; }
+.instalar-passos { text-align: left; margin-top: 1rem; }
+.instalar-passos ol { margin: 0; padding-left: 1.3rem; display: grid; gap: .7rem; font-size: .95rem; }
+.ico-compartilhar { width: 22px; height: 22px; vertical-align: -5px; color: #0A84FF; }
+.ico-mais { font-size: 1.1rem; }
+.dica-safari { font-size: .82rem; margin: .9rem 0 0; }
+.aviso-safari { background: #FFF4D6; color: #6B4E00; border-radius: 12px; padding: .8rem; font-size: .88rem; margin: 0 0 1rem; display: grid; gap: .6rem; }
+.aviso-safari .btn { justify-self: start; }
+.seta-safari { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); font-size: 2.6rem; color: #0A84FF; animation: quica 1s ease-in-out infinite; z-index: 50; }
+@keyframes quica { 50% { transform: translate(-50%, 10px); } }
+@media (prefers-reduced-motion: reduce) { .seta-safari { animation: none; } }
 .btn-agendar-cliente { width: 100%; margin-bottom: .8rem; }
 .faixa-abertura { margin: 0; background: #DDEFD9; color: #2E5E2A; border-radius: 12px; padding: .55rem .9rem; font-size: .82rem; font-weight: 600; }
 .bloco-agendar { border: 0; margin: 0; padding: 0; display: grid; gap: .5rem; min-width: 0; }

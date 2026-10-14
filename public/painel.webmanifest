@@ -1,0 +1,13 @@
+{
+  "name": "Painel L.S Cabeleireiro",
+  "short_name": "Painel L.S",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#DECEB4",
+  "theme_color": "#342611",
+  "icons": [
+    { "src": "/assets/app-icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/app-icone-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
