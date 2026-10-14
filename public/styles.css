@@ -547,9 +547,11 @@ select { font: inherit; }
 .dica-safari { font-size: .82rem; margin: .9rem 0 0; }
 .aviso-safari { background: #FFF4D6; color: #6B4E00; border-radius: 12px; padding: .8rem; font-size: .88rem; margin: 0 0 1rem; display: grid; gap: .6rem; }
 .aviso-safari .btn { justify-self: start; }
-.seta-safari { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); font-size: 2.6rem; color: #0A84FF; animation: quica 1s ease-in-out infinite; z-index: 50; }
-@keyframes quica { 50% { transform: translate(-50%, 10px); } }
-@media (prefers-reduced-motion: reduce) { .seta-safari { animation: none; } }
+.botoes-instalar { display: grid; gap: .6rem; margin-top: .4rem; }
+.instalar-passos h2 { font-size: 1rem; margin: 0 0 .6rem; }
+.outro-jeito { margin-top: .9rem; font-size: .9rem; }
+.outro-jeito summary { cursor: pointer; color: var(--cafe); font-weight: 600; }
+.outro-jeito ol { margin-top: .6rem; }
 .btn-agendar-cliente { width: 100%; margin-bottom: .8rem; }
 .faixa-abertura { margin: 0; background: #DDEFD9; color: #2E5E2A; border-radius: 12px; padding: .55rem .9rem; font-size: .82rem; font-weight: 600; }
 .bloco-agendar { border: 0; margin: 0; padding: 0; display: grid; gap: .5rem; min-width: 0; }

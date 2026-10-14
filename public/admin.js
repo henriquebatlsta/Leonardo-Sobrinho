@@ -510,19 +510,23 @@
     addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); pedido = e; });
     addEventListener("appinstalled", () => { toast("App instalado! Abra pelo ícone Painel L.S."); $("#instalar").hidden = true; });
     $("#instalar").hidden = false;
-    $("#btnInstalar").addEventListener("click", async () => {
+    // O botão do celular da pessoa vem primeiro e em destaque.
+    const meu = iphone ? $("#btnIphone") : android ? $("#btnAndroid") : null;
+    if (meu) { meu.classList.replace("btn-linha", "btn-escuro"); meu.parentElement.prepend(meu); }
+    if (!iphone && !android) $("#passosComputador").hidden = false;
+    const mostrar = (id) => ["passosIphone", "passosAndroid"].forEach((x) => { $(`#${x}`).hidden = x !== id; });
+
+    $("#btnIphone").addEventListener("click", (e) => {
+      if (dentroDeApp) { e.preventDefault(); $("#avisoSafari").hidden = false; return; }
+      if (!iphone) { e.preventDefault(); toast("Abra este link no iPhone, pelo Safari."); }
+      mostrar("passosIphone"); // o download do perfil segue pelo link
+    });
+    $("#btnAndroid").addEventListener("click", async () => {
       if (pedido) { pedido.prompt(); await pedido.userChoice.catch(() => {}); pedido = null; return; }
-      if (iphone) {
-        $("#passosIphone").hidden = false;
-        $("#avisoSafari").hidden = !dentroDeApp;
-        $("#setaSafari").hidden = dentroDeApp || /iPad/.test(ua);
-      } else if (android) $("#passosAndroid").hidden = false;
-      else $("#passosComputador").hidden = false;
-      $("#btnInstalar").textContent = "Siga os passos abaixo";
-      $("#btnInstalar").disabled = true;
+      mostrar("passosAndroid");
     });
     $("#btnCopiarLink").addEventListener("click", async () => {
-      const link = `${location.origin}/admin?instalar=1`;
+      const link = `${location.origin}/instalar`;
       try { await navigator.clipboard.writeText(link); toast("Link copiado! Agora abra o Safari e cole."); }
       catch { prompt("Copie este link e cole no Safari:", link); }
     });
