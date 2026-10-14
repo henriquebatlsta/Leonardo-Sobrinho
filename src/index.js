@@ -472,6 +472,15 @@ async function rotear(request, env) {
   let r;
 
   if (p === "/confirmar" && m === "GET") return confirmarPresenca(env, url);
+  // iPhone: perfil que coloca o ícone do painel na tela de início. Precisa deste tipo para o Safari oferecer instalar.
+  if (p === "/instalar-iphone" && m === "GET") {
+    const arq = await env.ASSETS.fetch(new Request(new URL("/assets/painel-perfil.mobileconfig", url)));
+    return new Response(arq.body, { headers: {
+      "Content-Type": "application/x-apple-aspen-config",
+      "Content-Disposition": 'attachment; filename="Painel-LS.mobileconfig"',
+      "Cache-Control": "no-store",
+    } });
+  }
 
   if (p === "/api/cadastro" && m === "POST") return cadastrar(env, request);
   if (p === "/api/entrar" && m === "POST") return entrar(env, request);

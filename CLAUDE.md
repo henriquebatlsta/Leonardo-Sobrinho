@@ -2,7 +2,7 @@
 
 Site de agendamento do L.S Cabeleireiro, servido pela Cloudflare (Worker `small-voice-493b`, domínio leonardosobrinho.com).
 
-- Páginas em `public/`; servidor (Worker) em `src/` só para `/api/*` e `/confirmar`, mais o cron de lembretes. Dados do salão (e-mail, WhatsApp, horários, serviços, preços) ficam em `public/config.js`, que o servidor também importa.
+- Páginas em `public/`; servidor (Worker) em `src/` só para `/api/*`, `/confirmar` e `/instalar-iphone` (perfil do iPhone com o ícone do painel), mais o cron de lembretes. Dados do salão (e-mail, WhatsApp, horários, serviços, preços) ficam em `public/config.js`, que o servidor também importa.
 - Banco D1 `leonardo-sobrinho-db` (binding `DB`). Mudança de estrutura = nova migração em `migrations/`; nunca editar uma migração já aplicada.
 - Regras de horário existem em dois lugares e precisam ficar iguais: `public/app.js` (`horariosDoDia`) e `src/agenda.js` (`motivoIndisponivel`). O expediente de cada dia vem de `expediente()` nos dois: um dia aberto pelo Léo (tabela `aberturas`) vale mais que o normal da semana.
 - Datas são AAAA-MM-DD no horário de Brasília (UTC-3).
