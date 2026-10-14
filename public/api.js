@@ -3,6 +3,11 @@
 (() => {
   "use strict";
 
+  // O login só fica guardado com cadeado (https). Se a página abriu sem, vai para a versão com.
+  if (location.protocol === "http:" && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+    location.replace(`https://${location.host}${location.pathname}${location.search}${location.hash}`);
+  }
+
   async function chamar(metodo, caminho, dados) {
     let resp;
     try {
