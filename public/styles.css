@@ -639,3 +639,4 @@ select { font: inherit; }
 .legal-links { margin-top: 2rem; padding-top: 1.2rem; border-top: 1px solid rgba(94, 76, 46, .18); font-size: .88rem; }
 .rodape-legal { display: flex; justify-content: center; flex-wrap: wrap; gap: .4rem 1.2rem; margin-top: 1rem !important; }
 .rodape-legal a { text-decoration: underline; text-underline-offset: 3px; }
+.legal h3 { font-size: .98rem; font-weight: 600; margin: 1.3rem 0 .3rem; color: var(--escuro); }
