@@ -498,6 +498,7 @@
   $("#btnEnviarAgendar").addEventListener("click", () => setTimeout(() => jg.close(), 300));
 
   /* ------------------------------------------------------------ instalar na tela de início */
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw-painel.js").catch(() => {});
   (function instalar() {
     const noApp = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
     if (noApp || !/[?&]instalar\b/.test(location.search)) return;
