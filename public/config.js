@@ -81,13 +81,13 @@ window.LS_CONFIG = {
     { id: "ozonio", cat: "tratamentos", nome: "Ozonioterapia", preco: 100, duracao: 120,
       desc: "Tratamento com ozônio para o couro cabeludo: equilibra a oleosidade e fortalece a raiz." },
 
-    { id: "prog-com", cat: "alisamentos", nome: "Progressiva", nota: "com formol", preco: 180, duracao: 240,
+    { id: "prog-com", cat: "alisamentos", nome: "Progressiva", nota: "com formol", preco: 180, precoMasc: 100, duracao: 240,
       desc: "Alisamento de longa duração, liso marcado e brilho intenso." },
-    { id: "prog-sem", cat: "alisamentos", nome: "Progressiva", nota: "sem formol", preco: 180, duracao: 240,
+    { id: "prog-sem", cat: "alisamentos", nome: "Progressiva", nota: "sem formol", preco: 180, precoMasc: 100, duracao: 240,
       desc: "Redução de volume e frizz com fórmula livre de formol." },
     { id: "selagem", cat: "alisamentos", nome: "Selagem", nota: "com ou sem formol", preco: 180, duracao: 240,
       desc: "Alinha a fibra e controla o frizz mantendo o movimento natural." },
-    { id: "botox", cat: "alisamentos", nome: "Botox Capilar", preco: 150, duracao: 180,
+    { id: "botox", cat: "alisamentos", nome: "Botox Capilar", preco: 150, precoMasc: 80, duracao: 180,
       desc: "Preenche a fibra, reduz o volume e deixa os fios disciplinados." },
 
     { id: "cor-tinta", cat: "coloracao", nome: "Coloração com sua tinta", preco: 100, duracao: 90,
