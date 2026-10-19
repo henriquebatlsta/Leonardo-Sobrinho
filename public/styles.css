@@ -184,6 +184,8 @@ button { font: inherit; cursor: pointer; }
 .servico-pe { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .7rem; }
 .preco small { display: block; font-size: .7rem; color: var(--oliva); text-transform: uppercase; letter-spacing: .05em; }
 .preco b { font-size: 1.25rem; color: var(--escuro); }
+.preco-duplo b { display: block; font-size: 1.1rem; }
+.preco-duplo small + b + small { margin-top: .35rem; }
 .dur { font-size: .75rem; color: var(--oliva); }
 .btn-add { border: 2px solid var(--cafe); background: transparent; color: var(--cafe); padding: .5rem 1rem; border-radius: 999px; font-weight: 600; font-size: .85rem; min-width: 7.4rem; transition: background .2s, color .2s; }
 .btn-add:hover { background: rgba(94, 76, 46, .1); }

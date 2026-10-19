@@ -119,7 +119,9 @@
         <h3>${s.nome}${s.nota ? ` <span class="nota">(${s.nota})</span>` : ""}</h3>
         <p>${s.desc}</p>
         <div class="servico-pe">
-          <div class="preco"><small>a partir de</small><b>${brl(s.preco)}</b></div>
+          ${s.precoMasc
+            ? `<div class="preco preco-duplo"><small>Feminino a partir de</small><b>${brl(s.preco)}</b><small>Masculino a partir de</small><b>${brl(s.precoMasc)}</b></div>`
+            : `<div class="preco"><small>a partir de</small><b>${brl(s.preco)}</b></div>`}
           <button type="button" class="btn-add" data-toggle="${s.id}" aria-pressed="${sel}"
             aria-label="${sel ? "Remover" : "Adicionar"} ${nomeServico(s)}">${sel ? "✓ Adicionado" : "+ Adicionar"}</button>
         </div>
