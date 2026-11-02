@@ -27,7 +27,7 @@
     const f = e.target, erro = $(".erro", f), btn = $("button", f);
     erro.textContent = ""; btn.disabled = true;
     try {
-      await API.post("/api/admin/entrar", { email: f.elements.email.value, senha: f.elements.senha.value });
+      await API.post("/api/admin/entrar", { login: f.elements.login.value, senha: f.elements.senha.value });
       f.reset();
       try { await abrirPainel(); }
       catch (err) {
@@ -59,7 +59,10 @@
   const msgAcesso = (c, senha) =>
     `Olá, ${primeiro(c.nome)}, tudo bem? Aqui é o Léo, do L.S Cabeleireiro. Fiz o seu cadastro no meu site, ` +
     `por onde você pode agendar e acompanhar seus horários:\n${location.origin}/conta.html\n\n` +
-    `E-mail: ${c.email}\nSenha: ${senha}\n\nSe quiser, troque a senha depois em “Minha conta”.`;
+    `Login: o seu WhatsApp (${API.fmtTelefone(c.whatsapp)})\nSenha: ${senha}\n\nSe quiser, troque a senha depois em “Minha conta”.`;
+  const msgSenhaNova = (c, senha) =>
+    `Olá, ${primeiro(c.nome)}, tudo bem? Aqui é o Léo, do L.S Cabeleireiro. Criei uma senha nova para você entrar no site:\n${location.origin}/conta.html\n\n` +
+    `Login: o seu WhatsApp (${API.fmtTelefone(c.whatsapp)})\nSenha: ${senha}\n\nSe quiser, troque depois em “Minha conta”.`;
   const msgConfirmado = (a) =>
     `Oi, ${primeiro(a.nome)}! Aqui é o Léo, do L.S Cabeleireiro. Seu horário está confirmado: ${quando(a)} (${a.servicos.join(" + ")}). Te espero!`;
   const msgLembrete = (a) =>
@@ -167,7 +170,7 @@
       <div class="horario-info">
         <p><b>${esc(a.nome)}</b></p>
         <p>${a.servicos.map(esc).join(" + ")} · a partir de ${esc(API.brl(a.preco))}</p>
-        <small><a href="${wa(a.whatsapp, "")}" target="_blank" rel="noopener">${esc(API.fmtTelefone(a.whatsapp))}</a> · ${esc(a.email)}</small>
+        <small><a href="${wa(a.whatsapp, "")}" target="_blank" rel="noopener">${esc(API.fmtTelefone(a.whatsapp))}</a>${a.email ? ` · ${esc(a.email)}` : ""}</small>
         ${a.obs ? `<small class="obs">“${esc(a.obs)}”</small>` : ""}
         ${a.status === "cancelado" && a.motivo_cancelado ? `<small class="motivo">${esc(a.motivo_cancelado)}</small>` : ""}
         <div class="selos">${selos}</div>
@@ -322,23 +325,134 @@
   }
   function renderClientes() {
     const q = $("#buscaCliente").value.trim().toLowerCase();
-    const l = clientes.filter((c) => !q || `${c.nome} ${c.email} ${c.whatsapp}`.toLowerCase().includes(q.replace(/[()\s-]/g, "")) || c.nome.toLowerCase().includes(q));
+    const dig = q.replace(/\D/g, "");
+    const l = clientes.filter((c) => !q || c.nome.toLowerCase().includes(q) || (c.email || "").toLowerCase().includes(q) || (dig && c.whatsapp.includes(dig)));
     $("#totalClientes").textContent = `(${clientes.length})`;
     $("#listaClientes").innerHTML = l.length ? l.map((c) => {
       const end = [c.rua && `${c.rua}, ${c.numero}`, c.complemento, c.bairro, c.cidade && `${c.cidade}/${c.uf}`, c.cep].filter(Boolean).join(" · ");
-      return `<div class="item-cliente">
+      return `<div class="item-cliente" data-cliente="${c.id}">
         <b>${esc(c.nome)}</b>
-        <small><a href="${wa(c.whatsapp, "")}" target="_blank" rel="noopener">${esc(API.fmtTelefone(c.whatsapp))}</a> · ${esc(c.email)}</small>
+        <small><a href="${wa(c.whatsapp, "")}" target="_blank" rel="noopener">${esc(API.fmtTelefone(c.whatsapp))}</a>${c.email ? ` · ${esc(c.email)}` : ""}</small>
         <small>${end ? esc(end) : "Sem endereço cadastrado"} · ${c.total} horário(s)</small>
+        <div class="acoes-cliente">
+          <button type="button" class="btn btn-linha btn-sm" data-ver-horarios="${c.id}" aria-expanded="false">Ver horários</button>
+          <button type="button" class="link" data-senha="${c.id}">Senha nova</button>
+        </div>
+        <div class="horarios-cliente" hidden></div>
       </div>`;
     }).join("") : `<p class="vazio">Nenhuma cliente encontrada.</p>`;
   }
+
+  // Horários de uma cliente: os próximos em cima, depois o histórico.
+  async function verHorariosCliente(b) {
+    const box = b.closest(".item-cliente").querySelector(".horarios-cliente");
+    const abrir = box.hidden;
+    box.hidden = !abrir;
+    b.setAttribute("aria-expanded", String(abrir));
+    b.textContent = abrir ? "Esconder horários" : "Ver horários";
+    if (!abrir) return;
+    box.innerHTML = `<p class="carregando">Carregando…</p>`;
+    try {
+      const r = await API.get(`/api/admin/clientes/${b.dataset.verHorarios}/agendamentos`);
+      if (!r.agendamentos.length) { box.innerHTML = `<p class="vazio">Ela ainda não marcou nenhum horário.</p>`; return; }
+      const futuros = r.agendamentos.filter((a) => a.data >= r.hoje).reverse();
+      const passados = r.agendamentos.filter((a) => a.data < r.hoje);
+      box.innerHTML =
+        (futuros.length ? `<h3>Marcados</h3>${futuros.map(linhaHorario).join("")}` : "") +
+        (passados.length ? `<h3>Já passaram (${passados.length})</h3>${passados.map(linhaHorario).join("")}` : "");
+    } catch (err) { box.innerHTML = `<p class="erro">${esc(err.message)}</p>`; }
+  }
+
+  // Linha compacta de um horário (histórico e lista da cliente).
+  const ROTULO = { pendente: "Aguardando confirmação", confirmado: "Confirmado", cancelado: "Desmarcado" };
+  function linhaHorario(a) {
+    return `<div class="linha-horario ${a.status}">
+      <span class="lh-quando"><b>${esc(API.fmtData(a.data, { day: "2-digit", month: "2-digit", year: "2-digit" }))}</b> ${esc(a.hora)}</span>
+      <span class="lh-servicos">${a.servicos.map(esc).join(" + ")} · ${esc(API.brl(a.preco))}</span>
+      <span class="selo selo-${a.status}">${ROTULO[a.status] || esc(a.status)}</span>
+    </div>`;
+  }
+
+  $("#listaClientes").addEventListener("click", (e) => {
+    const v = e.target.closest("[data-ver-horarios]");
+    if (v) verHorariosCliente(v);
+    const s = e.target.closest("[data-senha]");
+    if (s) abrirSenha(clientes.find((c) => c.id === Number(s.dataset.senha)));
+  });
+
+  /* ------------------------------------------------------------ senha nova */
+  const js = $("#janelaSenha"), fs = $("#formSenha");
+  let emSenha = null;
+  $("#btnOutraSenha3").addEventListener("click", () => { fs.elements.senha.value = senhaNova(); });
+  function abrirSenha(c) {
+    emSenha = c;
+    fs.reset();
+    fs.elements.senha.value = senhaNova();
+    $("#subSenha").textContent = `${c.nome} · ${API.fmtTelefone(c.whatsapp)}. A senha antiga deixa de valer.`;
+    $(".erro", fs).textContent = "";
+    $(".msg-senha", fs).hidden = true;
+    fs.elements.senha.closest("label").hidden = false;
+    $("#btnSalvarSenha").hidden = false; $("#btnSalvarSenha").disabled = false;
+    $("#btnEnviarSenha").hidden = true;
+    $("#btnFecharSenha").textContent = "Voltar";
+    js.showModal();
+  }
+  fs.addEventListener("submit", async (e) => {
+    if (e.submitter?.value !== "salvar") return;
+    e.preventDefault();
+    const senha = fs.elements.senha.value.trim(), btn = $("#btnSalvarSenha");
+    btn.disabled = true;
+    try {
+      await API.post(`/api/admin/clientes/${emSenha.id}/senha`, { senha });
+      fs.elements.senha.closest("label").hidden = true;
+      $(".msg-senha", fs).hidden = false;
+      fs.elements.mensagem.value = msgSenhaNova(emSenha, senha);
+      const link = $("#btnEnviarSenha");
+      link.href = wa(emSenha.whatsapp, fs.elements.mensagem.value);
+      fs.elements.mensagem.oninput = () => { link.href = wa(emSenha.whatsapp, fs.elements.mensagem.value); };
+      link.hidden = false;
+      btn.hidden = true;
+      $("#btnFecharSenha").textContent = "Fechar";
+    } catch (err) { $(".erro", fs).textContent = err.message; btn.disabled = false; }
+  });
+  $("#btnEnviarSenha").addEventListener("click", () => setTimeout(() => js.close(), 300));
+
+  /* ------------------------------------------------------------ histórico (últimos atendimentos) */
+  let paginaHist = 0;
+  async function carregarHistorico(mais = false) {
+    paginaHist = mais ? paginaHist + 1 : 0;
+    const btn = $("#btnMaisHistorico");
+    if (!mais) $("#historico").innerHTML = `<p class="carregando">Carregando…</p>`;
+    btn.disabled = true;
+    try {
+      const r = await API.get(`/api/admin/historico?pagina=${paginaHist}`);
+      const html = r.agendamentos.map((a) => `
+        <div class="linha-horario linha-hist ${a.status}">
+          <span class="lh-quando"><b>${esc(API.fmtData(a.data, { weekday: "short", day: "2-digit", month: "2-digit" }))}</b> ${esc(a.hora)}</span>
+          <span class="lh-servicos"><b>${esc(a.nome)}</b> · ${a.servicos.map(esc).join(" + ")} · ${esc(API.brl(a.preco))}</span>
+          <span class="selo selo-${a.status}">${ROTULO[a.status] || esc(a.status)}</span>
+        </div>`).join("");
+      if (mais) $("#historico").insertAdjacentHTML("beforeend", html);
+      else $("#historico").innerHTML = html || `<p class="vazio">Nenhum atendimento ainda.</p>`;
+      btn.hidden = !r.temMais;
+    } catch (err) { $("#historico").innerHTML = `<p class="erro">${esc(err.message)}</p>`; }
+    finally { btn.disabled = false; }
+  }
+  $("#btnMaisHistorico").addEventListener("click", () => carregarHistorico(true));
+  $$(".vista-agenda [data-vista]").forEach((b) => b.addEventListener("click", () => {
+    $$(".vista-agenda [data-vista]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+    const hist = b.dataset.vista === "historico";
+    $("#vistaHistorico").hidden = !hist;
+    $("#vistaProximos").hidden = hist;
+    if (hist) carregarHistorico();
+  }));
   $("#buscaCliente").addEventListener("input", () => clientes && renderClientes());
 
   /* ------------------------------------------------------------ cadastrar cliente */
   const jc = $("#janelaCliente"), fc = $("#formCliente");
   let criada = null; // última cliente cadastrada nesta janela
   API.mascaraTelefone(fc.elements.whatsapp);
+  API.mascaraLogin($("#formLogin").elements.login);
   // Senha simples de ditar e digitar no celular: "ls" + 4 números.
   const senhaNova = () => `ls${String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0")}`;
   $("#btnOutraSenha").addEventListener("click", () => { fc.elements.senha.value = senhaNova(); });
@@ -366,7 +480,7 @@
     btn.disabled = true;
     try {
       const senha = f.senha.value.trim();
-      const r = await API.post("/api/admin/clientes", { nome: f.nome.value, whatsapp: f.whatsapp.value, email: f.email.value, senha });
+      const r = await API.post("/api/admin/clientes", { nome: f.nome.value, whatsapp: f.whatsapp.value, senha });
       criada = r.cliente;
       if (clientes) { clientes.push(r.cliente); clientes.sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR")); renderClientes(); }
       // Agora a janela mostra a mensagem com o acesso, pronta para o WhatsApp.
@@ -476,13 +590,13 @@
     try {
       const r = await API.post("/api/admin/agendamentos", {
         servicos, data: f.data.value, hora: f.hora.value, obs: f.obs.value,
-        ...(modoNova ? { novaCliente: { nome: f.nome.value, whatsapp: f.whatsapp.value, email: f.email.value, senha } } : { clienteId: Number(f.clienteId.value) }),
+        ...(modoNova ? { novaCliente: { nome: f.nome.value, whatsapp: f.whatsapp.value, senha } } : { clienteId: Number(f.clienteId.value) }),
       });
       if (r.novaCliente && clientes) { clientes.push(r.cliente); clientes.sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR")); renderClientes(); }
       await carregarAgenda();
       const a = r.agendamento;
       let msg = msgConfirmado(a);
-      if (r.novaCliente) msg += `\n\nTambém fiz o seu cadastro no site, para você acompanhar seus horários:\n${location.origin}/conta.html\nE-mail: ${r.cliente.email}\nSenha: ${senha}`;
+      if (r.novaCliente) msg += `\n\nTambém fiz o seu cadastro no site, para você acompanhar seus horários:\n${location.origin}/conta.html\nLogin: o seu WhatsApp\nSenha: ${senha}`;
       $("#tituloAgendar").textContent = r.novaCliente ? "Cliente cadastrada e horário marcado!" : "Horário marcado!";
       $(".passo-agendar", fg).hidden = true;
       $(".msg-agendar", fg).hidden = false;

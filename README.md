@@ -6,8 +6,9 @@ Site de agendamento do L.S Cabeleireiro (Leonardo Sobrinho), na Cloudflare (Work
 
 - **Site** (`public/index.html`): catálogo, escolha de dia e horário, e cadastro/login da cliente para reservar.
 - **Minha conta** (`/conta.html`): a cliente vê e cancela os horários, edita os dados e o endereço (já pronto para a futura loja) e troca a senha.
-- **Painel do Léo** (`/admin.html`): confirma horários (a cliente recebe e-mail), desmarca, bloqueia dias ou trechos do dia e vê as clientes cadastradas.
-- **Lembrete automático**: um dia antes, a partir das 9h, a cliente recebe um e-mail "amanhã você tem horário comigo, podemos confirmar?" com um botão para confirmar presença.
+- **Cadastro da cliente** só com nome, WhatsApp e senha. O login é o WhatsApp (quem se cadastrou antes com e-mail também pode entrar com ele). E-mail é opcional, em "Minha conta".
+- **Painel do Léo** (`/admin.html`): confirma horários (quem tem e-mail recebe a confirmação por e-mail), desmarca, bloqueia dias ou trechos do dia, vê os últimos atendimentos (aba Agenda → "Últimos atendimentos") e as clientes cadastradas, com os horários de cada uma e o botão "Senha nova".
+- **Lembrete automático**: um dia antes, a partir das 9h, quem tem e-mail recebe "amanhã você tem horário comigo, podemos confirmar?" com um botão para confirmar presença.
 
 ## Arquivos
 
@@ -18,7 +19,7 @@ Site de agendamento do L.S Cabeleireiro (Leonardo Sobrinho), na Cloudflare (Work
 
 ## Configuração na Cloudflare (uma vez)
 
-1. O Léo entra no painel com o e-mail e a senha da conta dele (conta com `admin = 1` no banco). Para trocar a senha, ele usa "Minha conta".
+1. O Léo entra no painel com o WhatsApp (ou e-mail) e a senha da conta dele (conta com `admin = 1` no banco). Para trocar a senha, ele usa "Minha conta".
 2. **Envio de e-mails:** Email Service → Email Sending → ativar o domínio `leonardosobrinho.com` (exige o plano Workers Paid). Os e-mails saem de `agenda@leonardosobrinho.com`. Sem isso o site funciona, e o painel oferece botões de WhatsApp no lugar.
 3. **Publicação automática:** Worker → Settings → Build → conectar o repositório, branch `main`, comando de deploy `npm run deploy` (aplica o banco e publica).
 

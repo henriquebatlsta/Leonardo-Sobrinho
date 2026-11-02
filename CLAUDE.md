@@ -6,5 +6,6 @@ Site de agendamento do L.S Cabeleireiro, servido pela Cloudflare (Worker `small-
 - Banco D1 `leonardo-sobrinho-db` (binding `DB`). Mudança de estrutura = nova migração em `migrations/`; nunca editar uma migração já aplicada.
 - Regras de horário existem em dois lugares e precisam ficar iguais: `public/app.js` (`horariosDoDia`) e `src/agenda.js` (`motivoIndisponivel`). O expediente de cada dia vem de `expediente()` nos dois: um dia aberto pelo Léo (tabela `aberturas`) vale mais que o normal da semana.
 - Datas são AAAA-MM-DD no horário de Brasília (UTC-3).
+- Login das clientes e do Léo é pelo WhatsApp (guardado só com DDD + número, sem 55). `clientes.email` é opcional (NULL); quem não tem e-mail não recebe e-mails automáticos, e o Léo usa os botões de WhatsApp do painel.
 - When interacting with Cloudflare, use the `cf` CLI unless the project has a Wrangler configuration file. Este projeto tem `wrangler.jsonc`, então use Wrangler aqui.
 - A publicação acontece pela integração Git da Cloudflare a partir da branch `main`. O comando de implantação lá é só `npx wrangler deploy`, que não aplica migrações: aplique-as antes com `npx wrangler d1 migrations apply DB --remote`.

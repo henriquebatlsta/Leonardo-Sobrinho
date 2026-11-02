@@ -319,6 +319,7 @@
   /* ------------------------------------------------------------ conta (passo 4) */
   const formConta = $("#formConta");
   API.mascaraTelefone(formConta.elements.whatsapp);
+  API.mascaraLogin(formConta.elements.login);
 
   function renderConta() {
     const c = API.cliente;
@@ -326,7 +327,7 @@
     $("#semConta").hidden = !!c;
     if (c) {
       $("#quemNome").textContent = c.nome;
-      $("#quemContato").textContent = `${c.email} · ${API.fmtTelefone(c.whatsapp)}`;
+      $("#quemContato").textContent = [API.fmtTelefone(c.whatsapp), c.email].filter(Boolean).join(" · ");
       const obsAntiga = formConta.elements.obs.value.trim();
       if (obsAntiga && !$("#obs").value) $("#obs").value = obsAntiga;
     }
@@ -358,7 +359,7 @@
     const erros = [];
     if (cad && f.nome.value.trim().length < 3) erros.push([f.nome, "Informe seu nome."]);
     if (cad && f.whatsapp.value.replace(/\D/g, "").length < 10) erros.push([f.whatsapp, "Informe um WhatsApp com DDD."]);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.value.trim())) erros.push([f.email, "Informe seu e-mail."]);
+    if (!cad && !API.loginValido(f.login.value)) erros.push([f.login, "Informe o seu WhatsApp com DDD."]);
     if (f.senha.value.length < (cad ? 6 : 1)) erros.push([f.senha, cad ? "A senha precisa ter pelo menos 6 caracteres." : "Informe sua senha."]);
     erros.forEach(([el]) => el.setAttribute("aria-invalid", "true"));
     if (erros.length) { $("#erroForm").textContent = erros[0][1]; erros[0][0].focus(); }
@@ -370,8 +371,8 @@
     if (!validarConta()) return false;
     const f = formConta.elements;
     const dados = estado.modoConta === "cadastro"
-      ? { nome: f.nome.value, whatsapp: f.whatsapp.value, email: f.email.value, senha: f.senha.value }
-      : { email: f.email.value, senha: f.senha.value };
+      ? { nome: f.nome.value, whatsapp: f.whatsapp.value, senha: f.senha.value }
+      : { login: f.login.value, senha: f.senha.value };
     const r = await API.post(estado.modoConta === "cadastro" ? "/api/cadastro" : "/api/entrar", dados);
     $("#obs").value = f.obs.value;
     formConta.reset();
@@ -417,11 +418,11 @@
         _subject: `Novo agendamento: ${d.nome} — ${diaTxt} às ${d.hora}`,
         _template: "table",
         _captcha: "false",
-        _replyto: d.email,
+        ...(d.email ? { _replyto: d.email } : {}),
         "Cliente": d.nome,
         "WhatsApp": d.whatsapp,
         "Chamar no WhatsApp": `https://wa.me/55${d.whatsapp.replace(/\D/g, "")}`,
-        "E-mail": d.email,
+        "E-mail": d.email || "não informado",
         "Data": fmtDiaLongo(d.dia),
         "Horário": d.hora,
         "Serviços": d.servicos.map(nomeServico).join(" + "),
@@ -435,7 +436,7 @@
 
   function mostrarSucesso(d) {
     const primeiro = d.nome.split(" ")[0];
-    $("#sucessoTexto").textContent = `Obrigado, ${primeiro}! O Leonardo recebeu seu pedido. Assim que ele confirmar, você recebe um e-mail. Um dia antes, mandamos um lembrete.`;
+    $("#sucessoTexto").textContent = `Obrigado, ${primeiro}! O Leonardo recebeu seu pedido e vai confirmar com você pelo WhatsApp. Um dia antes, ele te manda um lembrete.`;
     $("#resumoFinal").innerHTML = `
       <div><span>Quando</span><b>${fmtDiaLongo(d.dia)} às ${d.hora}</b></div>
       <div><span>Serviços</span><b>${d.servicos.map(nomeServico).join("<br>")}</b></div>

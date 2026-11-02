@@ -38,7 +38,7 @@ const botao = (href, txt) =>
 export const linkPresenca = (env, a) => `${env.SITE_URL}/confirmar?id=${a.id}&t=${a.token}`;
 
 async function enviar(env, { para, nome, assunto, html, texto }) {
-  if (!env.EMAIL || !env.EMAIL_FROM) return false;
+  if (!env.EMAIL || !env.EMAIL_FROM || !para) return false; // cliente sem e-mail: o Léo avisa pelo WhatsApp
   try {
     await env.EMAIL.send({
       from: { email: env.EMAIL_FROM, name: "Leonardo Sobrinho · L.S Cabeleireiro" },

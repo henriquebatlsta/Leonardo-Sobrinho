@@ -34,6 +34,7 @@
   const fe = $("#formEntrar");
   let modo = "entrar";
   API.mascaraTelefone(fe.elements.whatsapp);
+  API.mascaraLogin(fe.elements.login);
   $$("#telaEntrar [data-modo]").forEach((b) => b.addEventListener("click", () => {
     modo = b.dataset.modo;
     $$("#telaEntrar [data-modo]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
@@ -47,8 +48,8 @@
     enviarForm(fe, async () => {
       const d = API.dadosForm(fe);
       const r = modo === "cadastro"
-        ? await API.post("/api/cadastro", d)
-        : await API.post("/api/entrar", { email: d.email, senha: d.senha });
+        ? await API.post("/api/cadastro", { nome: d.nome, whatsapp: d.whatsapp, senha: d.senha })
+        : await API.post("/api/entrar", { login: d.login, senha: d.senha });
       fe.reset();
       API.definirCliente(r.cliente);
       if (r.admin) { location.href = "admin.html"; return; }
@@ -62,12 +63,15 @@
   fq.addEventListener("submit", (e) => {
     e.preventDefault();
     enviarForm(fq, async () => {
-      const r = await API.post("/api/senha/esqueci", { email: fq.elements.email.value });
+      const r = await API.post("/api/senha/esqueci", { login: fq.elements.email.value });
       $(".ok", fq).textContent = r.emailAtivo
-        ? "Pronto! Se esse e-mail tiver conta, o link chega em instantes. Confira também o spam."
-        : "O envio de e-mails ainda não está ativo. Chame o Léo no WhatsApp para trocar sua senha.";
+        ? "Pronto! O link chega em instantes no seu e-mail. Confira também o spam."
+        : "Não conseguimos mandar por e-mail. Use o botão do WhatsApp acima.";
     });
   });
+  if (C.whatsapp) {
+    $("#btnSenhaWhats").href = `https://wa.me/${C.whatsapp}?text=${encodeURIComponent("Oi, Léo! Esqueci a senha do site. Pode me mandar uma nova?")}`;
+  }
   const fr = $("#formRedefinir");
   fr.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -88,7 +92,7 @@
   function preencherDados(c) {
     $("#olaNome").textContent = c.nome.split(" ")[0];
     const f = fd.elements;
-    f.nome.value = c.nome; f.email.value = c.email; f.whatsapp.value = API.fmtTelefone(c.whatsapp);
+    f.nome.value = c.nome; f.email.value = c.email || ""; f.whatsapp.value = API.fmtTelefone(c.whatsapp);
     ["rua", "numero", "complemento", "bairro", "cidade", "uf"].forEach((k) => { f[k].value = c[k] || ""; });
     f.cep.value = c.cep ? c.cep.replace(/^(\d{5})(\d{3})$/, "$1-$2") : "";
   }

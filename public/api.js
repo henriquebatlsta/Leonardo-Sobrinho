@@ -56,6 +56,16 @@
     if (d.length > 7) v = `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}`;
     input.value = v;
   });
+  // Login: WhatsApp (com máscara) ou, para quem já tinha cadastro com ele, e-mail.
+  api.mascaraLogin = (input) => input.addEventListener("input", () => {
+    if (/[a-z@]/i.test(input.value)) return; // está digitando um e-mail
+    const d = input.value.replace(/\D/g, "").slice(0, 11);
+    let v = d;
+    if (d.length > 2) v = `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    if (d.length > 7) v = `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}`;
+    input.value = v;
+  });
+  api.loginValido = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) || v.replace(/\D/g, "").length >= 10;
   api.fmtTelefone = (dig) => {
     const d = String(dig || "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
     return d.length >= 10 ? `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}` : d;
