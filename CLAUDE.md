@@ -4,7 +4,8 @@ Site de agendamento do L.S Cabeleireiro, servido pela Cloudflare (Worker `small-
 
 - Páginas em `public/`; servidor (Worker) em `src/` só para `/api/*`, `/confirmar` e `/instalar-iphone` (perfil do iPhone com o ícone do painel), mais o cron de lembretes. Dados do salão (e-mail, WhatsApp, horários, serviços, preços) ficam em `public/config.js`, que o servidor também importa.
 - Banco D1 `leonardo-sobrinho-db` (binding `DB`). Mudança de estrutura = nova migração em `migrations/`; nunca editar uma migração já aplicada.
-- Regras de horário existem em dois lugares e precisam ficar iguais: `public/app.js` (`horariosDoDia`) e `src/agenda.js` (`motivoIndisponivel`). O expediente de cada dia vem de `expediente()` nos dois: um dia aberto pelo Léo (tabela `aberturas`) vale mais que o normal da semana.
+- Regras de horário existem em dois lugares e precisam ficar iguais: `public/app.js` (`horariosDoDia`) e `src/agenda.js` (`motivoIndisponivel`).
+- Serviço com `etapas` > 1 em `config.js` (ex.: cronograma capilar) é um pacote: a cliente escolhe dia e horário de todas as etapas no mesmo agendamento, com `intervaloDias: [mín, máx]` entre uma e outra. O servidor grava uma linha em `agendamentos` por etapa (a 1ª com os outros serviços e o preço; as seguintes com preço 0 e o nome "(etapa N de M)") e, se alguma etapa conflitar, não grava nenhuma. O expediente de cada dia vem de `expediente()` nos dois: um dia aberto pelo Léo (tabela `aberturas`) vale mais que o normal da semana.
 - Datas são AAAA-MM-DD no horário de Brasília (UTC-3).
 - Login das clientes e do Léo é pelo WhatsApp (guardado só com DDD + número, sem 55). `clientes.email` é opcional (NULL); quem não tem e-mail não recebe e-mails automáticos, e o Léo usa os botões de WhatsApp do painel.
 - When interacting with Cloudflare, use the `cf` CLI unless the project has a Wrangler configuration file. Este projeto tem `wrangler.jsonc`, então use Wrangler aqui.

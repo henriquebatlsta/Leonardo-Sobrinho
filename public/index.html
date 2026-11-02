@@ -105,7 +105,8 @@
 
         <!-- Passo 2 -->
         <div class="passo" data-passo="2" hidden>
-          <h3>Qual dia fica melhor?</h3>
+          <h3 id="tituloDia">Qual dia fica melhor?</h3>
+          <p class="etapa-aviso" id="avisoDia" hidden></p>
           <div class="mes-nav">
             <button type="button" class="mes-seta" id="mesAnt" aria-label="Mês anterior">‹</button>
             <div class="mes" id="mesLabel" aria-live="polite"></div>
@@ -116,7 +117,7 @@
 
         <!-- Passo 3 -->
         <div class="passo" data-passo="3" hidden>
-          <h3>Escolha o horário</h3>
+          <h3 id="tituloHora">Escolha o horário</h3>
           <p class="sub" id="diaEscolhido"></p>
           <div class="periodos" id="horarios"></div>
         </div>

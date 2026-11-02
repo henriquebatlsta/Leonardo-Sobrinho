@@ -21,7 +21,7 @@
       throw Object.assign(new Error("Sem conexão. Confira sua internet e tente de novo."), { status: 0 });
     }
     const json = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw Object.assign(new Error(json.erro || "Algo deu errado. Tente de novo."), { status: resp.status });
+    if (!resp.ok) throw Object.assign(new Error(json.erro || "Algo deu errado. Tente de novo."), { status: resp.status, etapa: json.etapa });
     return json;
   }
 

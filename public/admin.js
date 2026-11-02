@@ -169,7 +169,7 @@
       <div class="horario-quando"><b>${esc(a.hora)}</b><span>≈ ${a.duracao} min</span></div>
       <div class="horario-info">
         <p><b>${esc(a.nome)}</b></p>
-        <p>${a.servicos.map(esc).join(" + ")} · a partir de ${esc(API.brl(a.preco))}</p>
+        <p>${a.servicos.map(esc).join(" + ")} · ${a.preco ? `a partir de ${esc(API.brl(a.preco))}` : "incluso no pacote"}</p>
         <small><a href="${wa(a.whatsapp, "")}" target="_blank" rel="noopener">${esc(API.fmtTelefone(a.whatsapp))}</a>${a.email ? ` · ${esc(a.email)}` : ""}</small>
         ${a.obs ? `<small class="obs">“${esc(a.obs)}”</small>` : ""}
         ${a.status === "cancelado" && a.motivo_cancelado ? `<small class="motivo">${esc(a.motivo_cancelado)}</small>` : ""}
@@ -368,7 +368,7 @@
   function linhaHorario(a) {
     return `<div class="linha-horario ${a.status}">
       <span class="lh-quando"><b>${esc(API.fmtData(a.data, { day: "2-digit", month: "2-digit", year: "2-digit" }))}</b> ${esc(a.hora)}</span>
-      <span class="lh-servicos">${a.servicos.map(esc).join(" + ")} · ${esc(API.brl(a.preco))}</span>
+      <span class="lh-servicos">${a.servicos.map(esc).join(" + ")} · ${a.preco ? esc(API.brl(a.preco)) : "pacote"}</span>
       <span class="selo selo-${a.status}">${ROTULO[a.status] || esc(a.status)}</span>
     </div>`;
   }
@@ -429,7 +429,7 @@
       const html = r.agendamentos.map((a) => `
         <div class="linha-horario linha-hist ${a.status}">
           <span class="lh-quando"><b>${esc(API.fmtData(a.data, { weekday: "short", day: "2-digit", month: "2-digit" }))}</b> ${esc(a.hora)}</span>
-          <span class="lh-servicos"><b>${esc(a.nome)}</b> · ${a.servicos.map(esc).join(" + ")} · ${esc(API.brl(a.preco))}</span>
+          <span class="lh-servicos"><b>${esc(a.nome)}</b> · ${a.servicos.map(esc).join(" + ")} · ${a.preco ? esc(API.brl(a.preco)) : "pacote"}</span>
           <span class="selo selo-${a.status}">${ROTULO[a.status] || esc(a.status)}</span>
         </div>`).join("");
       if (mais) $("#historico").insertAdjacentHTML("beforeend", html);

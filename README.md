@@ -6,6 +6,7 @@ Site de agendamento do L.S Cabeleireiro (Leonardo Sobrinho), na Cloudflare (Work
 
 - **Site** (`public/index.html`): catálogo, escolha de dia e horário, e cadastro/login da cliente para reservar.
 - **Minha conta** (`/conta.html`): a cliente vê e cancela os horários, edita os dados e o endereço (já pronto para a futura loja) e troca a senha.
+- **Pacotes em etapas** (cronograma capilar, 3 sessões): a cliente marca as 3 etapas de uma vez; o site só mostra dias em que todas cabem, com 7 a 21 dias entre elas (`config.js` → `intervaloDias`).
 - **Cadastro da cliente** só com nome, WhatsApp e senha. O login é o WhatsApp (quem se cadastrou antes com e-mail também pode entrar com ele). E-mail é opcional, em "Minha conta".
 - **Painel do Léo** (`/admin.html`): confirma horários (quem tem e-mail recebe a confirmação por e-mail), desmarca, bloqueia dias ou trechos do dia, vê os últimos atendimentos (aba Agenda → "Últimos atendimentos") e as clientes cadastradas, com os horários de cada uma e o botão "Senha nova".
 - **Lembrete automático**: um dia antes, a partir das 9h, quem tem e-mail recebe "amanhã você tem horário comigo, podemos confirmar?" com um botão para confirmar presença.

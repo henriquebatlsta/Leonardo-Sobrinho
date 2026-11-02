@@ -15,9 +15,11 @@
 
   const estado = {
     sel: (store.get("ls-sel") || []).filter((id) => porId[id]),
-    dia: null,     // Date (00:00)
+    // Dia e horário de cada etapa. Serviço comum: uma só. Cronograma (3 etapas): três,
+    // e a cliente escolhe uma depois da outra. estado.dia / estado.hora são os da etapa da vez.
+    marcas: [{ dia: null, hora: null }],
+    etapa: 0,
     mes: null,     // mês mostrado na escolha do dia (ano * 12 + mês)
-    hora: null,    // "HH:MM"
     passo: 1,
     aba: "todos",
     modoConta: "cadastro",
@@ -26,6 +28,9 @@
     bloqueios: {},
     aberturas: {}, // dias normalmente fechados que o Léo abriu (ex.: um domingo)
   };
+
+  Object.defineProperty(estado, "dia", { get: () => estado.marcas[estado.etapa].dia, set: (v) => { estado.marcas[estado.etapa].dia = v; } });
+  Object.defineProperty(estado, "hora", { get: () => estado.marcas[estado.etapa].hora, set: (v) => { estado.marcas[estado.etapa].hora = v; } });
 
   /* ------------------------------------------------------------ splash */
   (function splash() {
@@ -56,6 +61,20 @@
   const fmtDiaLongo = (d) => d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
 
   const duracaoTotal = () => estado.sel.reduce((t, id) => t + porId[id].duracao, 0);
+  // Serviço em várias etapas na seleção (ex.: cronograma capilar), se houver.
+  const pacote = () => estado.sel.map((id) => porId[id]).find((s) => (s.etapas || 1) > 1) || null;
+  const nEtapas = () => pacote()?.etapas || 1;
+  // A 1ª etapa leva todos os serviços escolhidos; as seguintes, só a sessão do pacote.
+  const duracaoEtapa = (k = estado.etapa) => (k === 0 ? duracaoTotal() : pacote().duracao);
+  const intervalo = () => pacote()?.intervaloDias || [1, 365];
+  const somaDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+
+  // Deixa uma marca por etapa (mantendo o que já foi escolhido) quando a seleção muda.
+  function ajustarEtapas() {
+    const n = nEtapas();
+    estado.marcas = Array.from({ length: n }, (_, k) => estado.marcas[k] || { dia: null, hora: null });
+    if (estado.etapa >= n) estado.etapa = n - 1;
+  }
   const precoTotal = () => estado.sel.reduce((t, id) => t + porId[id].preco, 0);
 
   const chaveDia = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -70,6 +89,7 @@
       r.bloqueios.forEach((b) => (estado.bloqueios[b.data] ||= []).push(b));
       (r.aberturas || []).forEach((a) => { estado.aberturas[a.data] = a; });
     } catch { /* sem servidor: mostra o expediente normal; o servidor confere na hora de marcar */ }
+    cacheViavel = new Map();
     if (estado.dia && estado.hora && !horariosDoDia(estado.dia).includes(estado.hora)) estado.hora = null;
     renderDias(); renderHorarios(); renderRodape();
   }
@@ -80,12 +100,12 @@
     return a ? { abre: a.abre, ultimoHorario: a.ultimo, fecha: a.fecha } : C.horarios[d.getDay()];
   }
 
-  function horariosDoDia(d) {
+  function horariosDoDia(d, k = estado.etapa) {
     const exp = expediente(d);
     if (!exp || diaBloqueado(d)) return [];
     const ocupados = (estado.ocupados[chaveDia(d)] || []).map((o) => [paraMin(o.hora), paraMin(o.hora) + Math.max(o.duracao, C.intervaloMinutos)]);
     const bloqueios = (estado.bloqueios[chaveDia(d)] || []).map((b) => [paraMin(b.hora_inicio), paraMin(b.hora_fim)]);
-    const dur = Math.max(duracaoTotal(), C.intervaloMinutos);
+    const dur = Math.max(duracaoEtapa(k), C.intervaloMinutos);
     const abre = paraMin(exp.abre), fecha = paraMin(exp.fecha);
     const ultimo = exp.ultimoHorario ? paraMin(exp.ultimoHorario) : fecha;
     let minimo = -1;
@@ -102,6 +122,36 @@
       out.push(paraHHMM(t));
     }
     return out;
+  }
+
+  // Um dia serve para a etapa k se tem horário livre e, depois dele, ainda dá para
+  // encaixar as etapas seguintes dentro do intervalo. Assim a cliente nunca escolhe
+  // a 1ª etapa e fica sem dia para as outras.
+  let cacheViavel = new Map();
+  function viavel(d, k) {
+    const chave = `${chaveDia(d)}|${k}`;
+    if (cacheViavel.has(chave)) return cacheViavel.get(chave);
+    cacheViavel.set(chave, false); // evita voltar ao mesmo dia enquanto calcula
+    let ok = horariosDoDia(d, k).length > 0;
+    if (ok && k < nEtapas() - 1) {
+      const [min, max] = intervalo();
+      ok = false;
+      for (let i = min; i <= max && !ok; i++) ok = viavel(somaDias(d, i), k + 1);
+    }
+    cacheViavel.set(chave, ok);
+    return ok;
+  }
+  // Janela de dias da etapa da vez (as etapas 2, 3… dependem do dia da anterior).
+  function janelaEtapa(k = estado.etapa) {
+    if (k === 0) return null;
+    const ant = estado.marcas[k - 1].dia;
+    const [min, max] = intervalo();
+    return ant ? [somaDias(ant, min), somaDias(ant, max)] : null;
+  }
+  function diaPermitido(d, k = estado.etapa) {
+    const j = janelaEtapa(k);
+    if (k > 0 && (!j || d < j[0] || d > j[1])) return false;
+    return viavel(d, k);
   }
 
   /* ------------------------------------------------------------ catálogo */
@@ -156,6 +206,8 @@
     if (i >= 0) estado.sel.splice(i, 1);
     else { estado.sel.push(id); toast(`${nomeServico(porId[id])} adicionado`); }
     store.set("ls-sel", estado.sel);
+    ajustarEtapas();
+    cacheViavel = new Map();
     // a duração mudou: o horário escolhido pode não caber mais
     if (estado.dia && estado.hora && !horariosDoDia(estado.dia).includes(estado.hora)) estado.hora = null;
     atualizarTudo();
@@ -188,7 +240,7 @@
     const todos = diasAbertos();
     const meses = [...new Set(todos.map(chaveMes))];
     if (estado.mes == null || !meses.includes(estado.mes)) {
-      const ref = estado.dia || todos.find((d) => horariosDoDia(d).length) || todos[0];
+      const ref = estado.dia || todos.find((d) => diaPermitido(d)) || todos[0];
       estado.mes = chaveMes(ref);
     }
     $("#mesLabel").textContent = new Date(Math.floor(estado.mes / 12), estado.mes % 12, 1)
@@ -196,9 +248,10 @@
     $("#mesAnt").disabled = estado.mes === meses[0];
     $("#mesProx").disabled = estado.mes === meses[meses.length - 1];
     const dias = todos.filter((d) => chaveMes(d) === estado.mes);
+    renderTituloEtapa();
     $("#dias").innerHTML = dias.map((d) => {
       const i = Math.round((d - todos[0]) / 864e5);
-      const livre = horariosDoDia(d).length > 0;
+      const livre = diaPermitido(d);
       const fechado = !expediente(d) || diaBloqueado(d);
       const sem = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
       const rot = i === 0 ? "hoje" : i === 1 ? "amanhã" : d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
@@ -220,12 +273,14 @@
     if (!b || b.disabled) return;
     estado.dia = new Date(b.dataset.dia);
     estado.hora = null;
+    // mudou o dia de uma etapa: as seguintes precisam ser escolhidas de novo
+    estado.marcas.slice(estado.etapa + 1).forEach((m) => { m.dia = null; m.hora = null; });
     irPara(3);
   });
 
   function renderHorarios() {
     if (!estado.dia) return;
-    $("#diaEscolhido").textContent = `${fmtDiaLongo(estado.dia)} · duração estimada ${fmtDur(Math.max(duracaoTotal(), C.intervaloMinutos))}`;
+    $("#diaEscolhido").textContent = `${fmtDiaLongo(estado.dia)} · duração estimada ${fmtDur(Math.max(duracaoEtapa(), C.intervaloMinutos))}`;
     const hs = horariosDoDia(estado.dia);
     if (!hs.length) {
       $("#horarios").innerHTML = `<p class="vazio">Não há horários livres para essa combinação neste dia. Tente outra data.</p>`;
@@ -271,12 +326,19 @@
     const n = estado.sel.length;
     $("#totalPreco").textContent = n ? `a partir de ${brl(precoTotal())}` : "—";
     $("#totalDuracao").textContent = n
-      ? `${n} serviço${n > 1 ? "s" : ""} · ≈ ${fmtDur(duracaoTotal())}${estado.dia && estado.hora && estado.passo >= 3 ? ` · ${estado.dia.toLocaleDateString("pt-BR")} às ${estado.hora}` : ""}`
+      ? `${n} serviço${n > 1 ? "s" : ""} · ≈ ${fmtDur(duracaoTotal())}${resumoMarcas()}`
       : "Escolha ao menos um serviço";
     $("#btnVoltar").style.visibility = estado.passo > 1 ? "visible" : "hidden";
     const av = $("#btnAvancar");
-    av.textContent = estado.passo === 4 ? (API.cliente || estado.modoConta === "entrar" ? "Confirmar agendamento" : "Criar conta e agendar") : "Continuar";
+    av.textContent = estado.passo === 4 ? (API.cliente || estado.modoConta === "entrar" ? "Confirmar agendamento" : "Criar conta e agendar")
+      : estado.passo === 3 && estado.etapa < nEtapas() - 1 ? `Continuar para a etapa ${estado.etapa + 2}` : "Continuar";
     av.disabled = !podeAvancar();
+  }
+
+  function resumoMarcas() {
+    const feitas = estado.marcas.filter((m) => m.dia && m.hora);
+    if (!feitas.length || estado.passo < 3 && estado.etapa === 0) return "";
+    return " · " + feitas.map((m) => `${m.dia.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${m.hora}`).join(", ");
   }
 
   function renderBarra() {
@@ -294,17 +356,48 @@
     if (p === 2 && estado.passo !== 2) carregarDisponibilidade();
     estado.passo = p;
     renderPassos(); renderDias(); renderHorarios(); renderRodape();
+    // A fileira de dias rola de lado: começa no dia escolhido ou no primeiro liberado.
+    if (p === 2) {
+      const alvo = $('#dias .dia[aria-selected="true"]') || $("#dias .dia:not([disabled])");
+      $("#dias").scrollLeft = alvo ? Math.max(0, alvo.offsetLeft - $("#dias").offsetLeft - 8) : 0;
+    }
     const topoCartao = $("#cartaoAgenda").getBoundingClientRect().top;
     if (topoCartao < 0 || topoCartao > innerHeight * 0.6) $("#cartaoAgenda").scrollIntoView({ behavior: "smooth", block: "start" });
     const foco = $(`.passo[data-passo="${p}"] h3`);
     if (foco) { foco.setAttribute("tabindex", "-1"); foco.focus({ preventScroll: true }); }
   }
 
-  $("#btnVoltar").addEventListener("click", () => irPara(Math.max(1, estado.passo - 1)));
+  $("#btnVoltar").addEventListener("click", () => {
+    // Na escolha do dia da etapa 2 ou 3, "Voltar" leva ao horário da etapa anterior.
+    if (estado.passo === 2 && estado.etapa > 0) { estado.etapa--; estado.mes = null; irPara(3); return; }
+    if (estado.passo === 4 && nEtapas() > 1) { estado.etapa = nEtapas() - 1; irPara(3); return; }
+    irPara(Math.max(1, estado.passo - 1));
+  });
   $("#btnAvancar").addEventListener("click", () => {
+    if (estado.passo === 1 && podeAvancar()) { estado.etapa = 0; estado.mes = null; }
+    // Horário da etapa escolhido: passa para o dia da próxima etapa.
+    if (estado.passo === 3 && podeAvancar() && estado.etapa < nEtapas() - 1) {
+      estado.etapa++; estado.mes = null; irPara(2); return;
+    }
     if (estado.passo < 4) { if (podeAvancar()) irPara(estado.passo + 1); return; }
     enviar();
   });
+
+  // Títulos dos passos 2 e 3 dizem qual etapa está sendo escolhida.
+  function renderTituloEtapa() {
+    const n = nEtapas(), p = pacote();
+    const etq = n > 1 ? `Etapa ${estado.etapa + 1} de ${n} · ` : "";
+    $("#tituloDia").textContent = `${etq}${estado.etapa > 0 ? "Qual dia para a próxima sessão?" : "Qual dia fica melhor?"}`;
+    $("#tituloHora").textContent = `${etq}Escolha o horário`;
+    const aviso = $("#avisoDia");
+    aviso.hidden = n < 2;
+    if (n < 2) return;
+    const [min, max] = intervalo();
+    const j = janelaEtapa();
+    aviso.textContent = estado.etapa === 0
+      ? `O ${p.nome} tem ${n} sessões. Escolha agora a 1ª; depois você marca as outras, de ${min} a ${max} dias uma da outra.`
+      : `Escolha um dia entre ${j[0].toLocaleDateString("pt-BR", { day: "numeric", month: "short" })} e ${j[1].toLocaleDateString("pt-BR", { day: "numeric", month: "short" })} (${min} a ${max} dias depois da etapa ${estado.etapa}).`;
+  }
   $("#barraBtn").addEventListener("click", (e) => {
     e.preventDefault();
     $("#agendar").scrollIntoView({ behavior: "smooth" });
@@ -387,21 +480,30 @@
     btn.disabled = true; btn.textContent = "Enviando…";
     try {
       if (!(await garantirConta())) { renderRodape(); return; }
+      const [m1, ...outras] = estado.marcas;
       const r = await API.post("/api/agendamentos", {
-        servicos: estado.sel, data: chaveDia(estado.dia), hora: estado.hora, obs: $("#obs").value.trim(),
+        servicos: estado.sel, data: chaveDia(m1.dia), hora: m1.hora, obs: $("#obs").value.trim(),
+        ...(outras.length ? { etapas: outras.map((m) => ({ data: chaveDia(m.dia), hora: m.hora })) } : {}),
       });
       const a = r.agendamento;
       const dados = {
         nome: a.nome, whatsapp: API.fmtTelefone(a.whatsapp), email: a.email, obs: a.obs,
-        dia: new Date(estado.dia), hora: a.hora,
+        dia: new Date(m1.dia), hora: a.hora,
         servicos: estado.sel.map((id) => porId[id]), duracao: a.duracao, preco: a.preco,
+        // etapas seguintes do pacote (cronograma), se houver
+        etapas: outras.map((m, i) => ({ dia: new Date(m.dia), hora: m.hora, duracao: r.etapas?.[i]?.duracao || pacote().duracao })),
+        pacote: pacote(),
       };
       avisarLeo(dados);
       ultimo = dados;
       mostrarSucesso(dados);
     } catch (err) {
       $("#erroForm").textContent = err.message;
-      if (err.status === 409 && API.cliente) { estado.hora = null; carregarDisponibilidade(); irPara(3); }
+      if (err.status === 409 && API.cliente) {
+        // volta para a etapa que ficou sem horário
+        if (err.etapa != null && err.etapa < nEtapas()) estado.etapa = err.etapa;
+        estado.hora = null; carregarDisponibilidade(); irPara(3);
+      }
       renderRodape();
     }
   }
@@ -425,6 +527,7 @@
         "E-mail": d.email || "não informado",
         "Data": fmtDiaLongo(d.dia),
         "Horário": d.hora,
+        ...(d.etapas.length ? { [`Próximas etapas (${d.pacote.nome})`]: d.etapas.map((e, i) => `${i + 2}ª: ${fmtDiaLongo(e.dia)} às ${e.hora}`).join(" | ") } : {}),
         "Serviços": d.servicos.map(nomeServico).join(" + "),
         "Duração estimada": fmtDur(d.duracao),
         "Valor (a partir de)": brl(d.preco),
@@ -438,18 +541,20 @@
     const primeiro = d.nome.split(" ")[0];
     $("#sucessoTexto").textContent = `Obrigado, ${primeiro}! O Leonardo recebeu seu pedido e vai confirmar com você pelo WhatsApp. Um dia antes, ele te manda um lembrete.`;
     $("#resumoFinal").innerHTML = `
-      <div><span>Quando</span><b>${fmtDiaLongo(d.dia)} às ${d.hora}</b></div>
+      <div><span>${d.etapas.length ? "1ª etapa" : "Quando"}</span><b>${fmtDiaLongo(d.dia)} às ${d.hora}</b></div>
+      ${d.etapas.map((e, i) => `<div><span>${i + 2}ª etapa</span><b>${fmtDiaLongo(e.dia)} às ${e.hora}</b></div>`).join("")}
       <div><span>Serviços</span><b>${d.servicos.map(nomeServico).join("<br>")}</b></div>
       <div><span>Duração</span><b>≈ ${fmtDur(d.duracao)}</b></div>
       <div><span>Valor</span><b>a partir de ${brl(d.preco)}</b></div>`;
     const w = $("#btnWhats");
     if (C.whatsapp) {
-      const msg = `Olá Leonardo! Acabei de agendar pelo site: ${d.servicos.map(nomeServico).join(" + ")} — ${fmtDiaLongo(d.dia)} às ${d.hora}. Nome: ${d.nome}.`;
+      const msg = `Olá Leonardo! Acabei de agendar pelo site: ${d.servicos.map(nomeServico).join(" + ")} — ${fmtDiaLongo(d.dia)} às ${d.hora}` +
+        d.etapas.map((e, i) => `; ${i + 2}ª etapa ${fmtDiaLongo(e.dia)} às ${e.hora}`).join("") + `. Nome: ${d.nome}.`;
       w.href = `https://wa.me/${C.whatsapp}?text=${encodeURIComponent(msg)}`;
       w.hidden = false;
     }
     $("#obs").value = "";
-    estado.sel = []; estado.dia = null; estado.hora = null;
+    estado.sel = []; estado.marcas = [{ dia: null, hora: null }]; estado.etapa = 0;
     store.set("ls-sel", []);
     renderCatalogo(); renderBarra();
     irPara(5);
@@ -460,21 +565,29 @@
   $("#btnIcs").addEventListener("click", () => {
     if (!ultimo) return;
     const d = ultimo;
-    const ini = new Date(d.dia); const [h, m] = d.hora.split(":").map(Number); ini.setHours(h, m, 0, 0);
-    const fim = new Date(ini.getTime() + d.duracao * 60000);
     const p = (n) => String(n).padStart(2, "0");
     const ics = (x) => `${x.getFullYear()}${p(x.getMonth() + 1)}${p(x.getDate())}T${p(x.getHours())}${p(x.getMinutes())}00`;
     const esc = (s) => s.replace(/[\\,;]/g, (c) => "\\" + c).replace(/\n/g, "\\n");
-    const txt = [
-      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//LS Cabeleireiro//Agenda//PT", "BEGIN:VEVENT",
-      `UID:${Date.now()}@lscabeleireiro`, `DTSTAMP:${ics(new Date())}`,
-      `DTSTART:${ics(ini)}`, `DTEND:${ics(fim)}`,
-      `SUMMARY:${esc("L.S Cabeleireiro — " + d.servicos.map(nomeServico).join(" + "))}`,
-      ...(C.endereco ? [`LOCATION:${esc(C.endereco)}`] : []),
-      `DESCRIPTION:${esc("Atendimento com Leonardo Sobrinho. Valor a partir de " + brl(d.preco) + ".")}`,
-      "BEGIN:VALARM", "TRIGGER:-PT2H", "ACTION:DISPLAY", "DESCRIPTION:Lembrete do salão", "END:VALARM",
-      "END:VEVENT", "END:VCALENDAR",
-    ].join("\r\n");
+    // Um evento por sessão: no cronograma, as 3 etapas entram na agenda.
+    const n = d.etapas.length + 1;
+    const sessoes = [
+      { dia: d.dia, hora: d.hora, duracao: d.duracao, titulo: d.servicos.map(nomeServico).join(" + ") },
+      ...d.etapas.map((e, i) => ({ ...e, titulo: `${d.pacote.nome} (etapa ${i + 2} de ${n})` })),
+    ];
+    const eventos = sessoes.flatMap((x, i) => {
+      const ini = new Date(x.dia); const [h, m] = x.hora.split(":").map(Number); ini.setHours(h, m, 0, 0);
+      const fim = new Date(ini.getTime() + x.duracao * 60000);
+      return [
+        "BEGIN:VEVENT", `UID:${Date.now()}-${i}@lscabeleireiro`, `DTSTAMP:${ics(new Date())}`,
+        `DTSTART:${ics(ini)}`, `DTEND:${ics(fim)}`,
+        `SUMMARY:${esc("L.S Cabeleireiro — " + x.titulo)}`,
+        ...(C.endereco ? [`LOCATION:${esc(C.endereco)}`] : []),
+        `DESCRIPTION:${esc(i === 0 ? "Atendimento com Leonardo Sobrinho. Valor a partir de " + brl(d.preco) + "." : "Continuação do " + d.pacote.nome + " com Leonardo Sobrinho.")}`,
+        "BEGIN:VALARM", "TRIGGER:-PT2H", "ACTION:DISPLAY", "DESCRIPTION:Lembrete do salão", "END:VALARM",
+        "END:VEVENT",
+      ];
+    });
+    const txt = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//LS Cabeleireiro//Agenda//PT", ...eventos, "END:VCALENDAR"].join("\r\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([txt], { type: "text/calendar" }));
     a.download = "agendamento-ls-cabeleireiro.ics";

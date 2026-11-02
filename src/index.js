@@ -2,7 +2,7 @@
 // As páginas (public/) são servidas direto pela Cloudflare; este Worker só
 // responde /api/* e /confirmar, e roda os lembretes automáticos (cron).
 import { C } from "./config.js";
-import { porId, nomeServico, motivoIndisponivel, motivoConflito, paraMin, paraHHMM, agoraBrasilia, somaDias, dataValida, horaValida, fmtDataLonga } from "./agenda.js";
+import { porId, nomeServico, pacoteDe, diasEntre, motivoIndisponivel, motivoConflito, paraMin, paraHHMM, agoraBrasilia, somaDias, dataValida, horaValida, fmtDataLonga } from "./agenda.js";
 import { hashSenha, conferirSenha, criarSessao, sessaoAtual, encerrarSessao, cookieSaida, tokenAleatorio, sha256, iguais } from "./auth.js";
 import { emailConfirmado, emailLembrete, emailDesmarcado, emailRedefinirSenha, emailParaLeo } from "./emails.js";
 
@@ -227,26 +227,53 @@ async function criarAgendamento(env, request) {
   if (!ids.length) throw new Erro(400, "Escolha ao menos um serviço.");
   if (!dataValida(b.data) || !horaValida(b.hora)) throw new Erro(400, "Escolha o dia e o horário.");
   const servicos = ids.map((id) => porId[id]);
-  const duracao = servicos.reduce((t, sv) => t + sv.duracao, 0);
   const preco = servicos.reduce((t, sv) => t + sv.preco, 0);
+  const obs = texto(b.obs, 500);
 
-  const motivo = motivoIndisponivel({ data: b.data, hora: b.hora, duracao, ...(await dadosDoDia(env, b.data)) });
-  if (motivo) throw new Erro(409, motivo);
+  // Serviço em várias etapas (cronograma): a 1ª vai junto com os outros serviços e
+  // as seguintes, só com ele, nos dias escolhidos pela cliente (b.etapas).
+  const pacote = pacoteDe(servicos);
+  const marcas = [{ data: b.data, hora: b.hora }, ...(pacote ? (Array.isArray(b.etapas) ? b.etapas : []) : [])];
+  const nEtapas = pacote ? pacote.etapas : 1;
+  if (marcas.length !== nEtapas) throw new Erro(400, `Escolha o dia e o horário das ${nEtapas} etapas do ${pacote.nome}.`);
+  const [minDias, maxDias] = pacote?.intervaloDias || [1, 365];
+  const linhas = marcas.map((m, k) => {
+    if (!dataValida(m?.data) || !horaValida(m?.hora)) throw Object.assign(new Erro(400, `Escolha o dia e o horário da etapa ${k + 1}.`), { etapa: k });
+    if (k > 0) {
+      const gap = diasEntre(marcas[k - 1].data, m.data);
+      if (gap < minDias || gap > maxDias) {
+        throw Object.assign(new Erro(400, `A etapa ${k + 1} precisa ser de ${minDias} a ${maxDias} dias depois da etapa ${k}.`), { etapa: k });
+      }
+    }
+    const etiqueta = pacote ? `${pacote.nome} (etapa ${k + 1} de ${nEtapas})` : null;
+    return k === 0
+      ? { ...m, duracao: servicos.reduce((t, sv) => t + sv.duracao, 0), preco,
+          nomes: servicos.map((sv) => (sv === pacote ? etiqueta : nomeServico(sv))) }
+      : { ...m, duracao: pacote.duracao, preco: 0, nomes: [etiqueta] };
+  });
 
-  const r = await env.DB.prepare(
+  for (const [k, l] of linhas.entries()) {
+    const motivo = motivoIndisponivel({ data: l.data, hora: l.hora, duracao: l.duracao, ...(await dadosDoDia(env, l.data)) });
+    if (motivo) throw Object.assign(new Erro(409, nEtapas > 1 ? `Etapa ${k + 1}: ${motivo}` : motivo), { etapa: k });
+  }
+
+  const inseridos = (await env.DB.batch(linhas.map((l) => env.DB.prepare(
     "INSERT INTO agendamentos (cliente_id, data, hora, duracao, servicos, preco, obs, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-  ).bind(s.cliente_id, b.data, b.hora, duracao, JSON.stringify(servicos.map(nomeServico)), preco, texto(b.obs, 500), tokenAleatorio(16)).run();
-  const id = r.meta.last_row_id;
+  ).bind(s.cliente_id, l.data, l.hora, l.duracao, JSON.stringify(l.nomes), l.preco, obs, tokenAleatorio(16))))).map((r) => r.meta.last_row_id);
 
   // Duas pessoas podem ter apertado ao mesmo tempo: fica com quem chegou primeiro.
-  const { ocupados, bloqueios, abertura } = await dadosDoDia(env, b.data);
-  const antes = ocupados.filter((o) => o.id < id);
-  if (motivoIndisponivel({ data: b.data, hora: b.hora, duracao, ocupados: antes, bloqueios, abertura })) {
-    await env.DB.prepare("DELETE FROM agendamentos WHERE id = ?").bind(id).run();
-    throw new Erro(409, "Esse horário acabou de ser reservado por outra pessoa.");
+  // Se qualquer etapa perdeu o horário, nenhuma fica marcada.
+  for (const [k, l] of linhas.entries()) {
+    const { ocupados, bloqueios, abertura } = await dadosDoDia(env, l.data);
+    const antes = ocupados.filter((o) => o.id < inseridos[k] && !inseridos.includes(o.id));
+    if (motivoIndisponivel({ data: l.data, hora: l.hora, duracao: l.duracao, ocupados: antes, bloqueios, abertura })) {
+      await env.DB.batch(inseridos.map((id) => env.DB.prepare("DELETE FROM agendamentos WHERE id = ?").bind(id)));
+      throw Object.assign(new Erro(409, `${nEtapas > 1 ? `Etapa ${k + 1}: e` : "E"}sse horário acabou de ser reservado por outra pessoa.`), { etapa: k });
+    }
   }
-  const a = await agendamentoCompleto(env, id);
-  return json({ agendamento: { ...paraCliente(a), nome: a.nome, email: a.email, whatsapp: a.whatsapp } }, 201);
+  const a = await agendamentoCompleto(env, inseridos[0]);
+  const etapas = linhas.slice(1).map((l, i) => ({ id: inseridos[i + 1], data: l.data, hora: l.hora, duracao: l.duracao }));
+  return json({ agendamento: { ...paraCliente(a), nome: a.nome, email: a.email, whatsapp: a.whatsapp }, etapas }, 201);
 }
 
 async function agendamentoCompleto(env, id) {
@@ -596,7 +623,7 @@ export default {
     try {
       return await rotear(request, env);
     } catch (err) {
-      if (err instanceof Erro) return json({ erro: err.message }, err.status);
+      if (err instanceof Erro) return json({ erro: err.message, ...(err.etapa != null ? { etapa: err.etapa } : {}) }, err.status);
       console.error(err);
       return json({ erro: "Algo deu errado do nosso lado. Tente de novo em instantes." }, 500);
     }

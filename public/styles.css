@@ -670,3 +670,6 @@ select { font: inherit; }
   .linha-horario { grid-template-columns: 1fr auto; }
   .lh-servicos { grid-column: 1 / -1; order: 3; }
 }
+
+/* Etapas de um pacote (cronograma capilar) na escolha do dia */
+.etapa-aviso { margin: -.4rem 0 1rem; background: var(--creme-claro); border-left: 4px solid var(--oliva); border-radius: 10px; padding: .6rem .85rem; font-size: .85rem; color: var(--cafe); }

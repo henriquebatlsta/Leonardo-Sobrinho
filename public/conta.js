@@ -152,7 +152,7 @@
           <div class="horario-quando"><b>${esc(API.fmtData(a.data))}</b><span>${esc(a.hora)}</span></div>
           <div class="horario-info">
             <p>${a.servicos.map(esc).join(" + ")}</p>
-            <small>a partir de ${esc(API.brl(a.preco))}</small>
+            <small>${a.preco ? `a partir de ${esc(API.brl(a.preco))}` : "incluso no pacote"}</small>
             <div class="selos"><span class="selo selo-${cls}">${esc(rot)}</span>${presenca}</div>
             ${a.status === "cancelado" && a.motivo_cancelado ? `<small class="motivo">${esc(a.motivo_cancelado)}</small>` : ""}
           </div>

@@ -31,6 +31,12 @@ export const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currenc
 
 const sobrepoe = (a1, a2, b1, b2) => a1 < b2 && b1 < a2;
 
+/** Serviço feito em várias sessões (ex.: cronograma capilar), se houver na lista. */
+export const pacoteDe = (servicos) => servicos.find((s) => (s.etapas || 1) > 1) || null;
+
+/** Dias entre duas datas AAAA-MM-DD. */
+export const diasEntre = (a, b) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
+
 /** Horário do dia: o que o Léo abriu de exceção (aberturas) ou o normal da semana. */
 export function expediente(data, abertura) {
   if (abertura) return { abre: abertura.abre, ultimoHorario: abertura.ultimo, fecha: abertura.fecha };
