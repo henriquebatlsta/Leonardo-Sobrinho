@@ -2,7 +2,7 @@
 // As páginas (public/) são servidas direto pela Cloudflare; este Worker só
 // responde /api/* e /confirmar, e roda os lembretes automáticos (cron).
 import { C } from "./config.js";
-import { porId, nomeServico, motivoIndisponivel, motivoConflito, paraMin, paraHHMM, agoraBrasilia, somaDias, dataValida, horaValida, fmtDataLonga } from "./agenda.js";
+import { porId, nomeServico, pacoteDe, diasEntre, motivoIndisponivel, motivoConflito, paraMin, paraHHMM, agoraBrasilia, somaDias, dataValida, horaValida, fmtDataLonga } from "./agenda.js";
 import { hashSenha, conferirSenha, criarSessao, sessaoAtual, encerrarSessao, cookieSaida, tokenAleatorio, sha256, iguais } from "./auth.js";
 import { emailConfirmado, emailLembrete, emailDesmarcado, emailRedefinirSenha, emailParaLeo } from "./emails.js";
 
@@ -51,23 +51,57 @@ async function exigirAdmin(env, request) {
   if (s && s.admin) return s;
   // Sessão aberta antes de a conta virar admin, ou pelo login comum: vale a marca da conta.
   const c = s && s.cliente_id && (await env.DB.prepare("SELECT admin FROM clientes WHERE id = ?").bind(s.cliente_id).first());
-  if (!c || !c.admin) throw new Erro(401, "Entre no painel com o e-mail e a senha do Léo.");
+  if (!c || !c.admin) throw new Erro(401, "Entre no painel com o WhatsApp e a senha do Léo.");
   return { ...s, admin: true };
 }
 
 /* ------------------------------------------------------------ clientes */
 
+// WhatsApp só com DDD + número (sem o 55), como fica guardado.
+const zapLimpo = (v) => soDigitos(v).replace(/^55(?=\d{10,11}$)/, "").slice(0, 11);
+
+// E-mail é opcional: vazio vira NULL. Confere formato e se outra conta já usa.
+async function lerEmail(env, valor, idAtual = 0) {
+  const email = texto(valor, 200).toLowerCase();
+  if (!email) return null;
+  if (!emailOk(email)) throw new Erro(400, "Esse e-mail parece incompleto.");
+  const outro = await env.DB.prepare("SELECT id FROM clientes WHERE email = ? AND id != ?").bind(email, idAtual).first();
+  if (outro) throw new Erro(409, "Esse e-mail já está em outra conta.");
+  return email;
+}
+
+/** Contas com esse login (WhatsApp ou, para quem já tinha, e-mail). */
+async function contasDoLogin(env, login, soAdmin = false) {
+  const v = texto(login, 200);
+  const filtro = soAdmin ? " AND admin = 1" : "";
+  if (v.includes("@")) {
+    return (await env.DB.prepare(`SELECT * FROM clientes WHERE email = ?${filtro}`).bind(v.toLowerCase()).all()).results;
+  }
+  const zap = zapLimpo(v);
+  if (zap.length < 10) return [];
+  return (await env.DB.prepare(`SELECT * FROM clientes WHERE whatsapp IN (?, ?)${filtro} ORDER BY id`).bind(zap, `55${zap}`).all()).results;
+}
+
+/** Confere a senha; se duas contas usam o mesmo WhatsApp, vale a que bater. */
+async function contaPelaSenha(env, login, senha, soAdmin = false) {
+  if (typeof senha !== "string") return null;
+  for (const c of await contasDoLogin(env, login, soAdmin)) {
+    if (await conferirSenha(senha, c)) return c;
+  }
+  return null;
+}
+
 // Valida e grava uma conta nova. Usado pelo cadastro da cliente e pelo do painel.
+// O login é o WhatsApp; e-mail só se a pessoa quiser.
 async function novoCliente(env, b) {
   const nome = texto(b.nome, 120);
-  const email = texto(b.email, 200).toLowerCase();
-  const whatsapp = soDigitos(b.whatsapp).slice(0, 13);
+  const whatsapp = zapLimpo(b.whatsapp);
   if (nome.length < 3) throw new Erro(400, "Informe seu nome completo.");
-  if (!emailOk(email)) throw new Erro(400, "Esse e-mail parece incompleto.");
   if (whatsapp.length < 10) throw new Erro(400, "Informe um WhatsApp com DDD.");
   validarSenha(b.senha);
-  const existe = await env.DB.prepare("SELECT id FROM clientes WHERE email = ?").bind(email).first();
-  if (existe) throw new Erro(409, "Já existe uma conta com esse e-mail. Use “Entrar” ou “Esqueci minha senha”.");
+  const existe = (await contasDoLogin(env, whatsapp)).length;
+  if (existe) throw new Erro(409, "Já existe uma conta com esse WhatsApp. Use “Entrar” ou peça ao Léo uma senha nova.");
+  const email = await lerEmail(env, b.email);
   const { hash, salt } = await hashSenha(b.senha);
   const end = lerEndereco(b);
   const r = await env.DB.prepare(
@@ -84,11 +118,10 @@ async function cadastrar(env, request) {
 
 async function entrar(env, request) {
   const b = await corpo(request);
-  const email = texto(b.email, 200).toLowerCase();
-  const c = await env.DB.prepare("SELECT * FROM clientes WHERE email = ?").bind(email).first();
-  if (!c || typeof b.senha !== "string" || !(await conferirSenha(b.senha, c))) {
+  const c = await contaPelaSenha(env, b.login ?? b.whatsapp ?? b.email, b.senha);
+  if (!c) {
     await espera(600);
-    throw new Erro(401, "E-mail ou senha incorretos.");
+    throw new Erro(401, "WhatsApp ou senha incorretos.");
   }
   // A conta do Léo (admin = 1) entra já com acesso ao painel.
   const admin = !!c.admin;
@@ -112,12 +145,16 @@ async function atualizarEu(env, request) {
   const b = await corpo(request);
   const c = await env.DB.prepare("SELECT * FROM clientes WHERE id = ?").bind(s.cliente_id).first();
   const nome = texto(b.nome, 120);
-  const whatsapp = soDigitos(b.whatsapp).slice(0, 13);
+  const whatsapp = zapLimpo(b.whatsapp);
   if (nome.length < 3) throw new Erro(400, "Informe seu nome completo.");
   if (whatsapp.length < 10) throw new Erro(400, "Informe um WhatsApp com DDD.");
+  if (whatsapp !== zapLimpo(c.whatsapp) && (await contasDoLogin(env, whatsapp)).some((o) => o.id !== c.id)) {
+    throw new Erro(409, "Esse WhatsApp já está em outra conta.");
+  }
+  const email = "email" in b ? await lerEmail(env, b.email, c.id) : c.email;
   const end = lerEndereco(b);
-  await env.DB.prepare(`UPDATE clientes SET nome = ?, whatsapp = ?, ${CAMPOS_ENDERECO.map((k) => `${k} = ?`).join(", ")} WHERE id = ?`)
-    .bind(nome, whatsapp, ...CAMPOS_ENDERECO.map((k) => end[k]), c.id).run();
+  await env.DB.prepare(`UPDATE clientes SET nome = ?, whatsapp = ?, email = ?, ${CAMPOS_ENDERECO.map((k) => `${k} = ?`).join(", ")} WHERE id = ?`)
+    .bind(nome, whatsapp, email, ...CAMPOS_ENDERECO.map((k) => end[k]), c.id).run();
   if (b.novaSenha) {
     if (typeof b.senhaAtual !== "string" || !(await conferirSenha(b.senhaAtual, c))) throw new Erro(400, "A senha atual não confere.");
     validarSenha(b.novaSenha);
@@ -131,9 +168,9 @@ async function atualizarEu(env, request) {
 
 async function esqueciSenha(env, request) {
   const b = await corpo(request);
-  const email = texto(b.email, 200).toLowerCase();
-  const c = await env.DB.prepare("SELECT * FROM clientes WHERE email = ?").bind(email).first();
-  let enviado = true;
+  // Só dá para mandar o link para quem tem e-mail; pelo WhatsApp quem troca é o Léo.
+  const [c] = (await contasDoLogin(env, b.login ?? b.email)).filter((x) => x.email);
+  let enviado = !!c;
   if (c) {
     const token = tokenAleatorio();
     const expira = new Date(Date.now() + 3600000).toISOString();
@@ -190,26 +227,53 @@ async function criarAgendamento(env, request) {
   if (!ids.length) throw new Erro(400, "Escolha ao menos um serviço.");
   if (!dataValida(b.data) || !horaValida(b.hora)) throw new Erro(400, "Escolha o dia e o horário.");
   const servicos = ids.map((id) => porId[id]);
-  const duracao = servicos.reduce((t, sv) => t + sv.duracao, 0);
   const preco = servicos.reduce((t, sv) => t + sv.preco, 0);
+  const obs = texto(b.obs, 500);
 
-  const motivo = motivoIndisponivel({ data: b.data, hora: b.hora, duracao, ...(await dadosDoDia(env, b.data)) });
-  if (motivo) throw new Erro(409, motivo);
+  // Serviço em várias etapas (cronograma): a 1ª vai junto com os outros serviços e
+  // as seguintes, só com ele, nos dias escolhidos pela cliente (b.etapas).
+  const pacote = pacoteDe(servicos);
+  const marcas = [{ data: b.data, hora: b.hora }, ...(pacote ? (Array.isArray(b.etapas) ? b.etapas : []) : [])];
+  const nEtapas = pacote ? pacote.etapas : 1;
+  if (marcas.length !== nEtapas) throw new Erro(400, `Escolha o dia e o horário das ${nEtapas} etapas do ${pacote.nome}.`);
+  const [minDias, maxDias] = pacote?.intervaloDias || [1, 365];
+  const linhas = marcas.map((m, k) => {
+    if (!dataValida(m?.data) || !horaValida(m?.hora)) throw Object.assign(new Erro(400, `Escolha o dia e o horário da etapa ${k + 1}.`), { etapa: k });
+    if (k > 0) {
+      const gap = diasEntre(marcas[k - 1].data, m.data);
+      if (gap < minDias || gap > maxDias) {
+        throw Object.assign(new Erro(400, `A etapa ${k + 1} precisa ser de ${minDias} a ${maxDias} dias depois da etapa ${k}.`), { etapa: k });
+      }
+    }
+    const etiqueta = pacote ? `${pacote.nome} (etapa ${k + 1} de ${nEtapas})` : null;
+    return k === 0
+      ? { ...m, duracao: servicos.reduce((t, sv) => t + sv.duracao, 0), preco,
+          nomes: servicos.map((sv) => (sv === pacote ? etiqueta : nomeServico(sv))) }
+      : { ...m, duracao: pacote.duracao, preco: 0, nomes: [etiqueta] };
+  });
 
-  const r = await env.DB.prepare(
+  for (const [k, l] of linhas.entries()) {
+    const motivo = motivoIndisponivel({ data: l.data, hora: l.hora, duracao: l.duracao, ...(await dadosDoDia(env, l.data)) });
+    if (motivo) throw Object.assign(new Erro(409, nEtapas > 1 ? `Etapa ${k + 1}: ${motivo}` : motivo), { etapa: k });
+  }
+
+  const inseridos = (await env.DB.batch(linhas.map((l) => env.DB.prepare(
     "INSERT INTO agendamentos (cliente_id, data, hora, duracao, servicos, preco, obs, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-  ).bind(s.cliente_id, b.data, b.hora, duracao, JSON.stringify(servicos.map(nomeServico)), preco, texto(b.obs, 500), tokenAleatorio(16)).run();
-  const id = r.meta.last_row_id;
+  ).bind(s.cliente_id, l.data, l.hora, l.duracao, JSON.stringify(l.nomes), l.preco, obs, tokenAleatorio(16))))).map((r) => r.meta.last_row_id);
 
   // Duas pessoas podem ter apertado ao mesmo tempo: fica com quem chegou primeiro.
-  const { ocupados, bloqueios, abertura } = await dadosDoDia(env, b.data);
-  const antes = ocupados.filter((o) => o.id < id);
-  if (motivoIndisponivel({ data: b.data, hora: b.hora, duracao, ocupados: antes, bloqueios, abertura })) {
-    await env.DB.prepare("DELETE FROM agendamentos WHERE id = ?").bind(id).run();
-    throw new Erro(409, "Esse horário acabou de ser reservado por outra pessoa.");
+  // Se qualquer etapa perdeu o horário, nenhuma fica marcada.
+  for (const [k, l] of linhas.entries()) {
+    const { ocupados, bloqueios, abertura } = await dadosDoDia(env, l.data);
+    const antes = ocupados.filter((o) => o.id < inseridos[k] && !inseridos.includes(o.id));
+    if (motivoIndisponivel({ data: l.data, hora: l.hora, duracao: l.duracao, ocupados: antes, bloqueios, abertura })) {
+      await env.DB.batch(inseridos.map((id) => env.DB.prepare("DELETE FROM agendamentos WHERE id = ?").bind(id)));
+      throw Object.assign(new Erro(409, `${nEtapas > 1 ? `Etapa ${k + 1}: e` : "E"}sse horário acabou de ser reservado por outra pessoa.`), { etapa: k });
+    }
   }
-  const a = await agendamentoCompleto(env, id);
-  return json({ agendamento: { ...paraCliente(a), nome: a.nome, email: a.email, whatsapp: a.whatsapp } }, 201);
+  const a = await agendamentoCompleto(env, inseridos[0]);
+  const etapas = linhas.slice(1).map((l, i) => ({ id: inseridos[i + 1], data: l.data, hora: l.hora, duracao: l.duracao }));
+  return json({ agendamento: { ...paraCliente(a), nome: a.nome, email: a.email, whatsapp: a.whatsapp }, etapas }, 201);
 }
 
 async function agendamentoCompleto(env, id) {
@@ -268,11 +332,10 @@ function pagina(titulo, msg, status = 200) {
 // O Léo entra com o e-mail e a senha da conta dele (clientes.admin = 1).
 async function adminEntrar(env, request) {
   const b = await corpo(request);
-  const email = texto(b.email, 200).toLowerCase();
-  const c = await env.DB.prepare("SELECT * FROM clientes WHERE email = ? AND admin = 1").bind(email).first();
-  if (!c || typeof b.senha !== "string" || !(await conferirSenha(b.senha, c))) {
+  const c = await contaPelaSenha(env, b.login ?? b.email, b.senha, true);
+  if (!c) {
     await espera(1000);
-    throw new Erro(401, "E-mail ou senha incorretos.");
+    throw new Erro(401, "WhatsApp (ou e-mail) ou senha incorretos.");
   }
   return json({ ok: true }, 200, { "Set-Cookie": await criarSessao(env, { clienteId: c.id, admin: true }) });
 }
@@ -421,7 +484,7 @@ async function adminCriarAgendamento(env, request) {
     if (!cliente) throw new Erro(404, "Cliente não encontrada.");
   } else {
     cliente = await novoCliente(env, b.novaCliente || {}).catch((e) => {
-      throw e.status === 409 ? new Erro(409, "Já existe uma cliente com esse e-mail. Escolha ela na lista.") : e;
+      throw e.status === 409 ? new Erro(409, "Já existe uma cliente com esse WhatsApp. Escolha ela na lista.") : e;
     });
   }
   const r = await env.DB.prepare(
@@ -432,13 +495,51 @@ async function adminCriarAgendamento(env, request) {
   return json({ agendamento: paraAdmin(a), cliente: { ...clientePublico(cliente), criado_em: cliente.criado_em, total: 1 }, novaCliente: !b.clienteId, emailEnviado }, 201);
 }
 
-// O Léo cadastra uma cliente (com e-mail e uma senha para mandar a ela).
+// O Léo cadastra uma cliente (WhatsApp e uma senha para mandar a ela).
 async function adminCriarCliente(env, request) {
   await exigirAdmin(env, request);
   const c = await novoCliente(env, await corpo(request)).catch((e) => {
-    throw e.status === 409 ? new Erro(409, "Já existe uma conta com esse e-mail. Procure a cliente na lista.") : e;
+    throw e.status === 409 ? new Erro(409, "Já existe uma conta com esse WhatsApp. Procure a cliente na lista.") : e;
   });
   return json({ cliente: { ...clientePublico(c), criado_em: c.criado_em, total: 0 } }, 201);
+}
+
+// Histórico: horários que já passaram, do mais recente para o mais antigo.
+async function adminHistorico(env, request, url) {
+  await exigirAdmin(env, request);
+  const agora = agoraBrasilia();
+  const pagina = Math.max(0, Number(url.searchParams.get("pagina")) || 0);
+  const POR_PAGINA = 40;
+  const { results } = await env.DB.prepare(
+    `SELECT a.*, c.nome, c.email, c.whatsapp FROM agendamentos a JOIN clientes c ON c.id = a.cliente_id
+     WHERE a.data < ? OR (a.data = ? AND a.hora < ?)
+     ORDER BY a.data DESC, a.hora DESC LIMIT ? OFFSET ?`
+  ).bind(agora.data, agora.data, paraHHMM(agora.minutos), POR_PAGINA + 1, pagina * POR_PAGINA).all();
+  return json({ hoje: agora.data, agendamentos: results.slice(0, POR_PAGINA).map(paraAdmin), temMais: results.length > POR_PAGINA });
+}
+
+// Todos os horários de uma cliente (futuros e antigos).
+async function adminHorariosCliente(env, request, id) {
+  await exigirAdmin(env, request);
+  const { results } = await env.DB.prepare(
+    `SELECT a.*, c.nome, c.email, c.whatsapp FROM agendamentos a JOIN clientes c ON c.id = a.cliente_id
+     WHERE a.cliente_id = ? ORDER BY a.data DESC, a.hora DESC LIMIT 200`).bind(id).all();
+  return json({ hoje: agoraBrasilia().data, agendamentos: results.map(paraAdmin) });
+}
+
+// Sem e-mail não há "esqueci minha senha": o Léo cria uma senha nova e manda no WhatsApp.
+async function adminNovaSenha(env, request, id) {
+  await exigirAdmin(env, request);
+  const b = await corpo(request);
+  validarSenha(b.senha);
+  const c = await env.DB.prepare("SELECT id FROM clientes WHERE id = ?").bind(id).first();
+  if (!c) throw new Erro(404, "Cliente não encontrada.");
+  const { hash, salt } = await hashSenha(b.senha);
+  await env.DB.batch([
+    env.DB.prepare("UPDATE clientes SET senha_hash = ?, senha_salt = ? WHERE id = ?").bind(hash, salt, id),
+    env.DB.prepare("DELETE FROM sessoes WHERE cliente_id = ? AND admin = 0").bind(id),
+  ]);
+  return json({ ok: true });
 }
 
 /* ------------------------------------------------------------ lembretes (cron) */
@@ -450,7 +551,7 @@ export async function enviarLembretes(env) {
   const amanha = somaDias(agora.data, 1);
   const { results } = await env.DB.prepare(
     `SELECT a.*, c.nome, c.email, c.whatsapp FROM agendamentos a JOIN clientes c ON c.id = a.cliente_id
-     WHERE a.data = ? AND a.status != 'cancelado' AND a.lembrete_enviado = 0`).bind(amanha).all();
+     WHERE a.data = ? AND a.status != 'cancelado' AND a.lembrete_enviado = 0 AND c.email IS NOT NULL`).bind(amanha).all();
   let enviados = 0;
   for (const a of results) {
     if (await emailLembrete(env, a)) {
@@ -506,6 +607,9 @@ async function rotear(request, env) {
   if ((r = p.match(/^\/api\/admin\/bloqueios\/(\d+)$/)) && m === "DELETE") return adminRemoverBloqueio(env, request, Number(r[1]));
   if (p === "/api/admin/clientes" && m === "GET") return adminClientes(env, request);
   if (p === "/api/admin/clientes" && m === "POST") return adminCriarCliente(env, request);
+  if ((r = p.match(/^\/api\/admin\/clientes\/(\d+)\/agendamentos$/)) && m === "GET") return adminHorariosCliente(env, request, Number(r[1]));
+  if ((r = p.match(/^\/api\/admin\/clientes\/(\d+)\/senha$/)) && m === "POST") return adminNovaSenha(env, request, Number(r[1]));
+  if (p === "/api/admin/historico" && m === "GET") return adminHistorico(env, request, url);
   if (p === "/api/admin/agendamentos" && m === "POST") return adminCriarAgendamento(env, request);
   if (p === "/api/admin/aberturas" && m === "POST") return adminCriarAbertura(env, request);
   if ((r = p.match(/^\/api\/admin\/aberturas\/(\d+)$/)) && m === "DELETE") return adminRemoverAbertura(env, request, Number(r[1]));
@@ -519,7 +623,7 @@ export default {
     try {
       return await rotear(request, env);
     } catch (err) {
-      if (err instanceof Erro) return json({ erro: err.message }, err.status);
+      if (err instanceof Erro) return json({ erro: err.message, ...(err.etapa != null ? { etapa: err.etapa } : {}) }, err.status);
       console.error(err);
       return json({ erro: "Algo deu errado do nosso lado. Tente de novo em instantes." }, 500);
     }

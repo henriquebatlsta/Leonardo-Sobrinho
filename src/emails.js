@@ -24,12 +24,12 @@ function resumoHtml(a) {
   return `<table style="border-collapse:collapse;width:100%;margin:6px 0 18px">
     ${linha("Quando", `${esc(fmtDataLonga(a.data))} às ${esc(a.hora)}`)}
     ${linha("Serviços", JSON.parse(a.servicos).map(esc).join("<br>"))}
-    ${linha("Valor", `a partir de ${esc(brl(a.preco))}`)}
+    ${linha("Valor", a.preco ? `a partir de ${esc(brl(a.preco))}` : "incluso no pacote")}
     ${C.endereco ? linha("Onde", esc(C.endereco)) : ""}
   </table>`;
 }
 const resumoTexto = (a) =>
-  `Quando: ${fmtDataLonga(a.data)} às ${a.hora}\nServiços: ${JSON.parse(a.servicos).join(" + ")}\nValor: a partir de ${brl(a.preco)}` +
+  `Quando: ${fmtDataLonga(a.data)} às ${a.hora}\nServiços: ${JSON.parse(a.servicos).join(" + ")}\nValor: ${a.preco ? `a partir de ${brl(a.preco)}` : "incluso no pacote"}` +
   (C.endereco ? `\nOnde: ${C.endereco}` : "");
 
 const botao = (href, txt) =>
@@ -38,7 +38,7 @@ const botao = (href, txt) =>
 export const linkPresenca = (env, a) => `${env.SITE_URL}/confirmar?id=${a.id}&t=${a.token}`;
 
 async function enviar(env, { para, nome, assunto, html, texto }) {
-  if (!env.EMAIL || !env.EMAIL_FROM) return false;
+  if (!env.EMAIL || !env.EMAIL_FROM || !para) return false; // cliente sem e-mail: o Léo avisa pelo WhatsApp
   try {
     await env.EMAIL.send({
       from: { email: env.EMAIL_FROM, name: "Leonardo Sobrinho · L.S Cabeleireiro" },

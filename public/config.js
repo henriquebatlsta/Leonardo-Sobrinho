@@ -74,8 +74,12 @@ window.LS_CONFIG = {
       desc: "Repõe água e nutrientes, devolvendo maciez, brilho e movimento aos fios." },
     { id: "reconstrucao", cat: "tratamentos", nome: "Reconstrução ou Cauterização", preco: 100, duracao: 120,
       desc: "Repõe a massa capilar e sela as cutículas de fios enfraquecidos por química, calor ou descoloração." },
+    // etapas: em quantas sessões o serviço é feito. Ao agendar, a cliente escolhe dia e horário
+    // de todas de uma vez. intervaloDias: [mínimo, máximo] de dias entre uma etapa e a seguinte.
+    // "duracao" é o tempo de CADA etapa; "preco" é o do pacote inteiro.
     { id: "cronograma", cat: "tratamentos", nome: "Cronograma Capilar", nota: "3 etapas", preco: 250, duracao: 120,
-      desc: "Hidratação, nutrição e reconstrução em 3 etapas. Agende a primeira; as próximas o Léo combina com você." },
+      etapas: 3, intervaloDias: [7, 21],
+      desc: "Hidratação, nutrição e reconstrução em 3 etapas. Você já agenda as 3 de uma vez, com uma semana ou mais entre elas." },
     { id: "nano", cat: "tratamentos", nome: "Nanotecnologia Capilar", preco: 80, duracao: 75,
       desc: "Ativos de alta penetração que tratam a fibra por dentro e alinham os fios." },
     { id: "ozonio", cat: "tratamentos", nome: "Ozonioterapia", preco: 100, duracao: 120,

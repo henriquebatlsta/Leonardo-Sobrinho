@@ -642,3 +642,34 @@ select { font: inherit; }
 .rodape-legal { display: flex; justify-content: center; flex-wrap: wrap; gap: .4rem 1.2rem; margin-top: 1rem !important; }
 .rodape-legal a { text-decoration: underline; text-underline-offset: 3px; }
 .legal h3 { font-size: .98rem; font-weight: 600; margin: 1.3rem 0 .3rem; color: var(--escuro); }
+
+/* ---------- Painel: próximos x últimos atendimentos, horários da cliente ---------- */
+.vista-agenda { display: flex; gap: .3rem; padding: .3rem; margin-bottom: 1rem; background: var(--papel); border-radius: 999px; box-shadow: 0 12px 30px -24px rgba(0, 0, 0, .6); }
+.vista-agenda button {
+  flex: 1; border: 0; background: transparent; color: var(--cafe); font-weight: 600; font-size: .85rem;
+  padding: .55rem .7rem; border-radius: 999px; transition: background .2s, color .2s;
+}
+.vista-agenda button[aria-selected="true"] { background: var(--cafe); color: var(--creme-claro); }
+#vistaHistorico { display: grid; gap: .5rem; }
+#historico { display: grid; gap: .45rem; }
+.linha-horario {
+  display: grid; grid-template-columns: auto 1fr auto; gap: .3rem .8rem; align-items: center;
+  background: #fff; border: 1px solid rgba(94, 76, 46, .14); border-radius: 12px; padding: .55rem .8rem; font-size: .85rem;
+}
+.linha-horario.cancelado { opacity: .6; }
+.lh-quando { white-space: nowrap; color: var(--cafe); }
+.lh-quando b { color: var(--escuro); text-transform: capitalize; }
+.lh-servicos { color: var(--texto-suave); min-width: 0; }
+.lh-servicos b { color: var(--escuro); }
+.linha-horario .selo { justify-self: end; white-space: nowrap; }
+.acoes-cliente { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .45rem; }
+.acoes-cliente .link { padding: .4rem; font-size: .85rem; }
+.horarios-cliente { display: grid; gap: .4rem; margin-top: .6rem; }
+.horarios-cliente h3 { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--oliva); margin: .4rem 0 .1rem; }
+@media (max-width: 520px) {
+  .linha-horario { grid-template-columns: 1fr auto; }
+  .lh-servicos { grid-column: 1 / -1; order: 3; }
+}
+
+/* Etapas de um pacote (cronograma capilar) na escolha do dia */
+.etapa-aviso { margin: -.4rem 0 1rem; background: var(--creme-claro); border-left: 4px solid var(--oliva); border-radius: 10px; padding: .6rem .85rem; font-size: .85rem; color: var(--cafe); }
